@@ -303,7 +303,7 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
   min-height: 72px;
 }
 .nav__lockup img {
-  height: 30px;
+  height: 60px;
   width: auto;
   display: block;
   transition: opacity var(--dur) var(--ease);
@@ -357,7 +357,7 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
 @media (max-width: 880px) {
   .nav__toggle { display: inline-flex; }
   .nav__inner { padding: 10px var(--pad-x); }
-  .nav__lockup img { height: 24px; }
+  .nav__lockup img { height: 48px; }
   .nav__links {
     position: absolute;
     top: 100%; left: 0; right: 0;
