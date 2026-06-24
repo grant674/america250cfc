@@ -1536,6 +1536,7 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
   margin: 0;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 1fr;
   gap: 16px;
 }
 .judges-grid--single {
@@ -1600,7 +1601,11 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
   margin-top: 10px;
 }
 .judge-card__link {
-  margin-top: 16px;
+  /* Pin to the bottom-left of the card. Combined with grid-auto-rows: 1fr
+     (equal-height cards), every LinkedIn icon lands at the same height. */
+  margin-top: auto;
+  align-self: flex-start;
+  padding-top: 16px;
   display: inline-flex;
   align-items: center;
   color: var(--c-blue, #1B459B);
