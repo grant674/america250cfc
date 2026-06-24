@@ -1535,9 +1535,17 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
   padding: 0;
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* 6-column base so cards can span 2 (= 3 per row) and the orphaned last
+     pair can be centered without losing equal-height rows. */
+  grid-template-columns: repeat(6, 1fr);
   grid-auto-rows: 1fr;
   gap: 16px;
+}
+.judges-grid:not(.judges-grid--pair) > .judge-card { grid-column: span 2; }
+/* When the last row holds exactly 2 cards (8 total), nudge the 7th card in
+   one column so cards 7-8 sit centered in the 3-up row instead of left. */
+.judges-grid:not(.judges-grid--pair) > .judge-card:nth-child(7):nth-last-child(2) {
+  grid-column: 2 / span 2;
 }
 .judges-grid--single {
   grid-template-columns: minmax(0, 480px);
@@ -1631,10 +1639,23 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
    ("Non-voting seat") provides the only label. */
 
 @media (max-width: 880px) {
-  .judges-grid { grid-template-columns: repeat(2, 1fr); }
+  /* 2 per row — cards span 3 of 6 cols; 8 cards divide evenly so no orphan. */
+  .judges-grid:not(.judges-grid--pair) > .judge-card { grid-column: span 3; }
+  .judges-grid:not(.judges-grid--pair) > .judge-card:nth-child(7):nth-last-child(2) {
+    grid-column: auto / span 3;
+  }
 }
 @media (max-width: 560px) {
-  .judges-grid, .judges-grid--single, .judges-grid--pair { grid-template-columns: 1fr; }
+  /* 1 per row — every card full width and sized to its own content (equal
+     height only matters for cards sitting side by side). */
+  .judges-grid, .judges-grid--single, .judges-grid--pair {
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+  }
+  .judges-grid:not(.judges-grid--pair) > .judge-card,
+  .judges-grid:not(.judges-grid--pair) > .judge-card:nth-child(7):nth-last-child(2) {
+    grid-column: 1 / -1;
+  }
   .judges__subhead { margin-top: 28px; }
 }
 
