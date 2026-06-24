@@ -908,8 +908,9 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
   gap: 40px;
 }
 .footer__brand img {
-  height: 44px;
-  width: auto;
+  width: 100%;
+  max-width: 320px;
+  height: auto;
   display: block;
   margin-bottom: 20px;
 }
