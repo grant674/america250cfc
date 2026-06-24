@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Apply — America250 Community Futures Challenge</title>
+<meta name="description" content="Submit your community-driven idea for the America250 Community Futures Challenge. Five winners. $50,000 each." />
+<meta name="theme-color" content="#1B459B" />
+<meta name="robots" content="noindex,nofollow" />
+<meta property="og:title" content="Apply — America250 Community Futures Challenge" />
+<meta property="og:description" content="Submit your community-driven idea. Five winners. $50,000 each. Submissions open June 2026." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://america250cfc.org/apply/" />
+<meta property="og:image" content="https://america250cfc.org/assets/og-image.jpg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="America250 Community Futures Challenge" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Apply — America250 Community Futures Challenge" />
+<meta name="twitter:description" content="Submit your community-driven idea. Five winners. $50,000 each." />
+<meta name="twitter:image" content="https://america250cfc.org/assets/og-image.jpg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="/styles.css?v=16" />
+<link rel="stylesheet" href="/apply/styles.css?v=10" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="canonical" href="https://america250cfc.org/apply/" />
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<!-- ============== NAV ============== -->
+<nav id="nav" class="nav" aria-label="Primary">
+  <div class="nav__inner">
+    <a href="/" class="nav__lockup" aria-label="America250 Community Futures Challenge — home">
+      <img src="/assets/pmi250-mark-color.png" alt="America250 Community Futures Challenge" width="1160" height="113" />
+    </a>
+    <div class="nav__links" id="nav-links">
+      <a href="/#program">Program</a>
+      <a href="/#criteria">Criteria</a>
+      <a href="/#judges">Judges</a>
+      <a href="/#faq">FAQ</a>
+    </div>
+    <div class="nav__actions">
+      <span class="apply-saved" id="apply-saved" aria-live="polite" hidden>Auto-saved</span>
+      <button class="nav__toggle" type="button" aria-controls="nav-links" aria-expanded="false" aria-label="Open menu">
+        <span class="nav__toggle-bar" aria-hidden="true"></span>
+        <span class="nav__toggle-bar" aria-hidden="true"></span>
+        <span class="nav__toggle-bar" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<main id="main">
+
+<!-- ============== APPLY HEADER ============== -->
+<header class="apply-header">
+  <div class="container">
+    <h1 class="apply-h">Tell us about your project.</h1>
+    <p class="apply-lede">
+      A nationwide open call funded by PMI U.S., designed in partnership with Arizona State University, and operated by Pacheco Ventures. Five winners. $50,000 each. No equity. No strings. Submissions are independently judged across five dimensions by a panel of nationally acclaimed leaders. Your application is collected and managed by Pacheco Ventures and is not shared with PMI U.S. Plan on 25–35 minutes — your progress saves automatically as you go.
+    </p>
+    <p class="apply-resume">
+      <button type="button" id="btn-resume-link" class="apply-resume__btn">Get a link to finish on another device</button>
+      <span id="resume-link-msg" class="apply-resume__msg" aria-live="polite"></span>
+    </p>
+  </div>
+</header>
+
+<!-- ============== JUST-IN-TIME PRIVACY NOTICE ============== -->
+<!-- TODO(client): replace the body copy of .apply-jit__body with the final
+     approved just-in-time notice wording. Keep both links: the Privacy Policy
+     (/privacy/) and the PMI Corporate Privacy Notice (pmiprivacy.com). -->
+<aside class="apply-jit" role="note" aria-label="Privacy notice">
+  <div class="container container--narrow">
+    <p class="apply-jit__title">Before you begin — how your information is used</p>
+    <p class="apply-jit__body">The information you provide in this application is collected and managed by Pacheco Ventures to administer the America250 Community Futures Challenge. To learn what we collect and how it is used, see our <a href="/privacy/">Privacy Policy</a> and the <a href="https://www.pmiprivacy.com/global/en/" rel="noopener" target="_blank">PMI Corporate Privacy Notice</a>.</p>
+  </div>
+</aside>
+
+<!-- ============== PROGRESS BAR ============== -->
+<div class="apply-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Application progress">
+  <div class="container">
+    <div class="apply-progress__track">
+      <div class="apply-progress__fill" id="apply-progress-fill" data-fill="0"></div>
+    </div>
+    <div class="apply-progress__steps" id="apply-progress-steps">
+      <button type="button" class="apply-progress__step is-active" data-goto="1"><span>01</span> Eligibility</button>
+      <button type="button" class="apply-progress__step" data-goto="2"><span>02</span> About you</button>
+      <button type="button" class="apply-progress__step" data-goto="3"><span>03</span> Project</button>
+      <button type="button" class="apply-progress__step" data-goto="4"><span>04</span> Impact</button>
+      <button type="button" class="apply-progress__step" data-goto="5"><span>05</span> Attachments</button>
+      <button type="button" class="apply-progress__step" data-goto="6"><span>06</span> Review</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============== FORM ============== -->
+<section class="container">
+  <form class="apply-form" id="apply-form" novalidate autocomplete="off">
+
+    <!-- Honeypot — hidden from humans (display:none + tabindex=-1 + aria-hidden).
+         Bots that auto-fill every field will fill this; we reject those submissions. -->
+    <div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;">
+      <label for="nn_organization_url">Don't fill this in if you're human</label>
+      <input type="text" id="nn_organization_url" name="nn_organization_url" tabindex="-1" autocomplete="off" />
+    </div>
+
+
+    <!-- ============== STEP 1: ELIGIBILITY ============== -->
+    <section class="step" data-step="1">
+      <h2 class="step__h">Eligibility</h2>
+      <p class="step__sub">A quick check before we get into the details. All five must be <strong>yes</strong> for your project to be eligible. If anything's not, common eligibility requirements live in our <a href="/#faq">FAQ</a>.</p>
+
+      <div class="elig">
+        <fieldset class="elig__q">
+          <legend>The lead applicant is <strong>21 or older</strong>.</legend>
+          <div class="elig__choices">
+            <label class="radio"><input type="radio" name="elig_age" value="yes" required /> <span>Yes</span></label>
+            <label class="radio"><input type="radio" name="elig_age" value="no" required /> <span>No</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="elig__q">
+          <legend>The project serves <strong>adults 21 and older</strong> in a defined U.S. community.</legend>
+          <div class="elig__choices">
+            <label class="radio"><input type="radio" name="elig_audience" value="yes" required /> <span>Yes</span></label>
+            <label class="radio"><input type="radio" name="elig_audience" value="no" required /> <span>No</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="elig__q">
+          <legend>The project is in <strong>early-stage, pilot, or scaling</strong> phase — not fully self-sustaining.</legend>
+          <div class="elig__choices">
+            <label class="radio"><input type="radio" name="elig_phase" value="yes" required /> <span>Yes</span></label>
+            <label class="radio"><input type="radio" name="elig_phase" value="no" required /> <span>No</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="elig__q">
+          <legend>This is <strong>not</strong> lobbying, partisan political activity, or individual cash assistance.</legend>
+          <div class="elig__choices">
+            <label class="radio"><input type="radio" name="elig_scope" value="yes" required /> <span>Yes</span></label>
+            <label class="radio"><input type="radio" name="elig_scope" value="no" required /> <span>No</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="elig__q">
+          <legend>No member of our team is an <strong>employee or immediate family</strong> of PMI U.S., Arizona State University, the ASU Foundation, Pacheco Ventures, or any other named program partners.</legend>
+          <div class="elig__choices">
+            <label class="radio"><input type="radio" name="elig_coi" value="yes" required /> <span>Yes</span></label>
+            <label class="radio"><input type="radio" name="elig_coi" value="no" required /> <span>No</span></label>
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="elig__fail" id="elig-fail" hidden>
+        <h3>Based on your answers, this project may not be eligible.</h3>
+        <p>If you think you're eligible after all, write us at <a href="mailto:apply@america250cfc.org">apply@america250cfc.org</a> with a one-paragraph summary and we'll take a look.</p>
+      </div>
+    </section>
+
+    <!-- ============== STEP 2: ABOUT ============== -->
+    <section class="step" data-step="2" hidden>
+      <h2 class="step__h">About you &amp; your team</h2>
+      <p class="step__sub">Who's leading this, and from where.</p>
+
+      <div class="grid grid--2">
+        <label class="field">
+          <span class="field__label">Lead applicant — full name <span class="req">*</span></span>
+          <input type="text" name="lead_name" autocomplete="name" required maxlength="120" />
+        </label>
+        <label class="field">
+          <span class="field__label">Role / title <span class="req">*</span></span>
+          <input type="text" name="lead_role" required maxlength="120" placeholder="Founder, Executive Director, etc." />
+        </label>
+        <label class="field">
+          <span class="field__label">Email <span class="req">*</span></span>
+          <input type="email" name="lead_email" autocomplete="email" required maxlength="200" placeholder="you@organization.org" />
+        </label>
+      </div>
+
+      <h3 class="step__sectionH">Your organization</h3>
+      <div class="grid grid--2">
+        <label class="field">
+          <span class="field__label">Organization name <span class="req">*</span></span>
+          <input type="text" name="org_name" required maxlength="200" />
+        </label>
+        <label class="field">
+          <span class="field__label">Website</span>
+          <input type="url" name="org_url" maxlength="300" placeholder="organization.org" inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false" />
+        </label>
+        <label class="field">
+          <span class="field__label">Tax status <span class="req">*</span></span>
+          <select name="org_type" required>
+            <option value="">Select one…</option>
+            <option value="501c3">501(c)(3) nonprofit</option>
+            <option value="501c4">501(c)(4) social welfare</option>
+            <option value="for-profit">For-profit (LLC, C-corp, S-corp)</option>
+            <option value="b-corp">Benefit corporation / B Corp</option>
+            <option value="cooperative">Cooperative</option>
+            <option value="public">Government / public entity</option>
+            <option value="individual">Individual / sole proprietor</option>
+            <option value="fiscally-sponsored">Fiscally sponsored project</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="field__label">Do you have a registered business entity? (optional)</span>
+          <select name="org_has_entity">
+            <option value="">Select one…</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="field field--block">
+        <span class="field__label">Brief description of your team <span class="req">*</span></span>
+        <span class="field__hint">Judges review submissions impartially, without your name or organization shown. This description is visible to them, so focus on roles and relevant background.</span>
+        <textarea name="team_desc" required maxlength="800" rows="4" data-counter="800" placeholder="Who's working on this with you? What's their relevant background?"></textarea>
+        <span class="field__count" data-count-for="team_desc">0 / 800</span>
+      </label>
+    </section>
+
+    <!-- ============== STEP 3: PROJECT ============== -->
+    <section class="step" data-step="3" hidden>
+      <h2 class="step__h">Your project</h2>
+      <p class="step__sub">The shape of what you're building.</p>
+
+      <label class="field field--block">
+        <span class="field__label">Project title <span class="req">*</span></span>
+        <input type="text" name="proj_title" required maxlength="120" placeholder="One memorable line." />
+      </label>
+
+      <label class="field field--block">
+        <span class="field__label">Short summary <span class="req">*</span></span>
+        <textarea name="proj_summary" required maxlength="300" rows="2" data-counter="300" placeholder="What it is, in 300 characters. This is what judges see first."></textarea>
+        <span class="field__count" data-count-for="proj_summary">0 / 300</span>
+      </label>
+
+      <div class="grid grid--2">
+        <label class="field">
+          <span class="field__label">Category <span class="req">*</span></span>
+          <select name="proj_category" required>
+            <option value="">Select one…</option>
+            <option value="workforce">Workforce development</option>
+            <option value="mobility">Economic mobility</option>
+            <option value="infrastructure">Public infrastructure</option>
+            <option value="civic-tech">Civic technology</option>
+            <option value="entrepreneurship">Entrepreneurship</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Current phase <span class="req">*</span></span>
+          <select name="proj_phase" required>
+            <option value="">Select one…</option>
+            <option value="early-stage">Early-stage (concept proven, building first version)</option>
+            <option value="pilot">Pilot (running with a small community)</option>
+            <option value="scaling">Scaling (proven model, expanding reach)</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">City <span class="req">*</span></span>
+          <input type="text" name="proj_city" required maxlength="120" />
+        </label>
+
+        <label class="field">
+          <span class="field__label">State <span class="req">*</span></span>
+          <select name="proj_state" required>
+            <option value="">Select…</option>
+            <option>AL</option><option>AK</option><option>AZ</option><option>AR</option><option>CA</option>
+            <option>CO</option><option>CT</option><option>DE</option><option>DC</option><option>FL</option>
+            <option>GA</option><option>HI</option><option>ID</option><option>IL</option><option>IN</option>
+            <option>IA</option><option>KS</option><option>KY</option><option>LA</option><option>ME</option>
+            <option>MD</option><option>MA</option><option>MI</option><option>MN</option><option>MS</option>
+            <option>MO</option><option>MT</option><option>NE</option><option>NV</option><option>NH</option>
+            <option>NJ</option><option>NM</option><option>NY</option><option>NC</option><option>ND</option>
+            <option>OH</option><option>OK</option><option>OR</option><option>PA</option><option>RI</option>
+            <option>SC</option><option>SD</option><option>TN</option><option>TX</option><option>UT</option>
+            <option>VT</option><option>VA</option><option>WA</option><option>WV</option><option>WI</option>
+            <option>WY</option><option>PR</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="field field--block">
+        <span class="field__label">Communities served <span class="req">*</span></span>
+        <input type="text" name="proj_communities" required maxlength="300" placeholder="Who is this for, geographically and demographically?" />
+      </label>
+
+      <div class="grid grid--2">
+        <label class="field">
+          <span class="field__label">Total project budget <span class="req">*</span></span>
+          <div class="field__money">
+            <span aria-hidden="true">$</span>
+            <input type="number" name="proj_budget_total" required min="0" step="1" placeholder="50000" />
+          </div>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Already raised toward this</span>
+          <div class="field__money">
+            <span aria-hidden="true">$</span>
+            <input type="number" name="proj_budget_raised" min="0" step="1" placeholder="0" />
+          </div>
+        </label>
+      </div>
+
+      <label class="field field--block">
+        <span class="field__label">If you receive $50,000, what does that fund? <span class="req">*</span></span>
+        <textarea name="proj_use_of_funds" required maxlength="600" rows="3" data-counter="600" placeholder="Specific line items if possible — staff, software, equipment, services, etc."></textarea>
+        <span class="field__count" data-count-for="proj_use_of_funds">0 / 600</span>
+      </label>
+    </section>
+
+    <!-- ============== STEP 4: IMPACT ============== -->
+    <section class="step" data-step="4" hidden>
+      <h2 class="step__h">Impact &amp; approach</h2>
+      <p class="step__sub">Five questions, one per scoring dimension. Be specific. Numbers and dates are stronger than adjectives.</p>
+
+      <label class="field field--block">
+        <span class="field__label">Community impact <span class="rubric">25%</span> <span class="req">*</span></span>
+        <span class="field__hint">Does this innovation meaningfully improve conditions for real people in a real community? How do you measure outcomes?</span>
+        <textarea name="impact_community" required maxlength="1000" rows="5" data-counter="1000"></textarea>
+        <span class="field__count" data-count-for="impact_community">0 / 1000</span>
+      </label>
+
+      <label class="field field--block">
+        <span class="field__label">Feasibility <span class="rubric">20%</span> <span class="req">*</span></span>
+        <span class="field__hint">Is there a credible, executable plan? Realistic budget, capable team, achievable timeline. Major milestones from now through summer 2027.</span>
+        <textarea name="impact_feasibility" required maxlength="750" rows="4" data-counter="750"></textarea>
+        <span class="field__count" data-count-for="impact_feasibility">0 / 750</span>
+      </label>
+
+      <label class="field field--block">
+        <span class="field__label">Innovation <span class="rubric">20%</span> <span class="req">*</span></span>
+        <span class="field__hint">Is this a genuinely new approach, or a meaningful improvement on an existing one?</span>
+        <textarea name="impact_innovation" required maxlength="750" rows="4" data-counter="750"></textarea>
+        <span class="field__count" data-count-for="impact_innovation">0 / 750</span>
+      </label>
+
+      <label class="field field--block">
+        <span class="field__label">Sustainability <span class="rubric">20%</span> <span class="req">*</span></span>
+        <span class="field__hint">Can this grow beyond its initial community? Is there a replication model? Long-term viability and funding plan after the grant.</span>
+        <textarea name="impact_sustainability" required maxlength="750" rows="4" data-counter="750"></textarea>
+        <span class="field__count" data-count-for="impact_sustainability">0 / 750</span>
+      </label>
+
+      <label class="field field--block">
+        <span class="field__label">Founder &amp; team <span class="rubric">15%</span> <span class="req">*</span></span>
+        <span class="field__hint">Does the person or team behind this have the drive, background, and community connection to execute?</span>
+        <textarea name="impact_founder_team" required maxlength="500" rows="3" data-counter="500"></textarea>
+        <span class="field__count" data-count-for="impact_founder_team">0 / 500</span>
+      </label>
+    </section>
+
+    <!-- ============== STEP 5: ATTACHMENTS ============== -->
+    <section class="step" data-step="5" hidden>
+      <h2 class="step__h">Attachments</h2>
+      <p class="step__sub">Optional. Up to 5 files (10MB each, PDF / PNG / JPG / MP4) and one video URL. Skip this step if you don't have anything to add — your written application is what matters most.</p>
+
+      <div class="upload" id="upload-zone">
+        <input type="file" id="file-input" name="attachments" multiple accept=".pdf,image/png,image/jpeg,video/mp4" hidden />
+        <label for="file-input" class="upload__label">
+          <span class="upload__title">Drop files here or click to browse</span>
+          <span class="upload__sub">PDF, PNG, JPG, MP4 — 10MB max each</span>
+        </label>
+        <ul class="upload__list" id="upload-list"></ul>
+      </div>
+
+      <label class="field field--block">
+        <span class="field__label">Video URL (optional)</span>
+        <span class="field__hint">A 2–3 minute walkthrough strengthens any application. Vimeo, YouTube, or Loom.</span>
+        <input type="url" name="proj_video_url" maxlength="500" placeholder="vimeo.com/… or youtu.be/…" inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false" />
+      </label>
+    </section>
+
+    <!-- ============== STEP 6: REVIEW ============== -->
+    <section class="step" data-step="6" hidden>
+      <h2 class="step__h">Review &amp; submit</h2>
+      <p class="step__sub">Last look. Anything need fixing — click the step number above to jump back.</p>
+
+      <div class="review" id="review-output" aria-live="polite"></div>
+
+      <fieldset class="legal">
+        <label class="checkbox">
+          <input type="checkbox" name="legal_terms" required />
+          <span>I have read and agree to the <a href="/terms/" target="_blank" rel="noopener">Terms &amp; Conditions</a> and <a href="/privacy/" target="_blank" rel="noopener">Privacy Policy</a>. I confirm that all information above is accurate to the best of my knowledge.</span>
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" name="legal_attribution" required />
+          <span>I grant the America250 Community Futures Challenge, Pacheco Ventures (as program operator), and PMI U.S. (as program funder) permission to use my organization's name, project title, and submission excerpts for program reporting and storytelling, with attribution.</span>
+        </label>
+      </fieldset>
+
+      <div class="apply-verify">
+        <div class="cf-turnstile" data-sitekey="0x4AAAAAADl79SQIEXRexSSl" data-theme="light" data-action="apply"></div>
+      </div>
+    </section>
+
+    <!-- ============== STEP NAV ============== -->
+    <nav class="step-nav" aria-label="Application navigation">
+      <button type="button" class="btn btn--ghost-blue" id="btn-prev" hidden>← Back</button>
+      <button type="button" class="btn btn--blue" id="btn-next">Continue →</button>
+      <button type="submit" class="btn btn--blue btn--lg" id="btn-submit" hidden>Submit application →</button>
+      <span class="step-nav__meta" id="step-meta">Step 1 of 6 · Auto-saving</span>
+    </nav>
+  </form>
+</section>
+
+<!-- ============== POST-SUBMIT SUCCESS ============== -->
+<section class="container apply-success" id="apply-success" hidden aria-live="polite">
+  <h2 class="apply-h">Thank you.</h2>
+  <p class="apply-lede">
+    Your application is in. We've recorded it under the email <strong id="success-email"></strong>. Reference this number if you write us with questions:
+  </p>
+  <p class="success-id" aria-label="Application reference">
+    <code id="success-id"></code>
+  </p>
+  <p class="apply-lede">
+    We'll be in touch when judging is complete in early 2027. For anything in the meantime, write <a href="mailto:apply@america250cfc.org">apply@america250cfc.org</a>.
+  </p>
+
+  <!-- ============== SOCIAL SHARE ============== -->
+  <div class="apply-share" id="apply-share">
+    <p class="apply-share__label">Know someone with a community idea? Spread the word.</p>
+    <div class="apply-share__row">
+      <a class="btn btn--ghost-blue btn--sm share-btn" data-share="linkedin" target="_blank" rel="noopener" href="https://america250cfc.org">LinkedIn</a>
+      <a class="btn btn--ghost-blue btn--sm share-btn" data-share="x" target="_blank" rel="noopener" href="https://america250cfc.org">X</a>
+      <a class="btn btn--ghost-blue btn--sm share-btn" data-share="facebook" target="_blank" rel="noopener" href="https://america250cfc.org">Facebook</a>
+      <a class="btn btn--ghost-blue btn--sm share-btn" data-share="email" href="mailto:?subject=America250%20Community%20Futures%20Challenge">Email</a>
+      <button type="button" class="btn btn--ghost-blue btn--sm share-btn" id="share-native" hidden>Share…</button>
+      <button type="button" class="btn btn--ghost-blue btn--sm share-btn" id="share-copy">Copy link</button>
+    </div>
+    <span class="apply-share__msg" id="share-msg" role="status" aria-live="polite"></span>
+  </div>
+
+  <p>
+    <a class="btn btn--blue btn--lg" href="/">Back to home →</a>
+  </p>
+</section>
+
+</main>
+
+<!-- ============== FOOTER ============== -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer__grid">
+      <div class="footer__brand">
+        <img src="/assets/pmi250-white.png" alt="America250 Community Futures Challenge" width="1200" height="200" />
+        <p>A national initiative funded by PMI U.S., designed in partnership with Arizona State University, operated by Pacheco Ventures.</p>
+      </div>
+      <div class="footer__col">
+        <h4>P&nbsp;R&nbsp;O&nbsp;G&nbsp;R&nbsp;A&nbsp;M</h4>
+        <ul>
+          <li><a href="/#program">About</a></li>
+          <li><a href="/#criteria">Criteria</a></li>
+          <li><a href="/#judges">Judges</a></li>
+          <li><a href="/#faq">FAQ</a></li>
+        </ul>
+      </div>
+      <div class="footer__col">
+        <h4>A&nbsp;P&nbsp;P&nbsp;L&nbsp;Y</h4>
+        <ul>
+          <li><a href="/apply/">Open the application</a></li>
+          <li><a href="/#faq">Eligibility check</a></li>
+        </ul>
+      </div>
+      <div class="footer__col">
+        <h4>R&nbsp;E&nbsp;S&nbsp;O&nbsp;U&nbsp;R&nbsp;C&nbsp;E&nbsp;S</h4>
+        <ul>
+          <li><a href="/press/">Press</a></li>
+          <li><a href="/contact/">Contact</a></li>
+          <li><a href="/privacy/">Privacy</a></li>
+          <li><a href="/terms/">Terms</a></li>
+        </ul>
+      </div>
+      <div class="footer__col">
+        <h4>C&nbsp;O&nbsp;N&nbsp;N&nbsp;E&nbsp;C&nbsp;T</h4>
+        <ul>
+          <li><a href="https://www.uspmi.com" rel="noopener" target="_blank">PMI U.S. America 250 <span aria-hidden="true">↗</span></a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer__legal">
+      <span>© 2026 Pacheco Ventures &nbsp;·&nbsp; america250cfc.org &nbsp;·&nbsp; America250 CFC funded by PMI U.S.</span>
+      <span><a href="/privacy/">Privacy</a> &nbsp;·&nbsp; <a href="/terms/">Terms</a> &nbsp;·&nbsp; <a href="/press/">Press</a> &nbsp;·&nbsp; <a href="/contact/">Contact</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="/script.js?v=8" defer></script>
+<script src="/apply/script.js?v=10" defer></script>
+</body>
+</html>

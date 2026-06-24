@@ -1,0 +1,417 @@
+/* ============================================================
+   America250 CFC — Judge portal
+   Inherits global tokens from /styles.css. Scoped chrome for the
+   sign-in flow, queue list, and progress indicators.
+   ============================================================ */
+
+.judge-body { background: var(--c-gray); }
+
+/* ============================================================
+   Top bar — matches admin bar pattern (PMI Blue + yellow tag)
+   ============================================================ */
+.judge-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--c-blue);
+  color: var(--c-white);
+  border-bottom: 3px solid var(--c-yellow);
+}
+.judge-bar__inner {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 12px var(--pad-x);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 64px;
+}
+.judge-bar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  transition: opacity var(--dur) var(--ease);
+}
+.judge-bar__brand:hover { opacity: 0.85; }
+.judge-bar__brand img { height: 32px; width: auto; display: block; }
+.judge-bar__tag {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--c-yellow);
+  padding: 4px 10px;
+  border: 1px solid var(--c-yellow);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .judge-bar__tag { display: none; }
+}
+.judge-bar__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.judge-bar__who {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.8);
+}
+.judge-bar__signout {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--c-white);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: var(--radius-md);
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.judge-bar__signout:hover { background: rgba(255, 255, 255, 0.12); border-color: var(--c-white); }
+
+@media (max-width: 700px) {
+  .judge-bar__brand img { height: 26px; }
+  .judge-bar__who { display: none; }
+}
+
+/* ============================================================
+   Main layout
+   ============================================================ */
+.judge-main {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: clamp(28px, 4vw, 48px) var(--pad-x) clamp(64px, 8vw, 96px);
+}
+
+/* Spinner */
+.judge-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 120px 24px;
+  color: var(--fg-65);
+  font-family: var(--font);
+}
+.judge-spinner {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 3px solid var(--c-gray);
+  border-top-color: var(--c-blue);
+  animation: judge-spin 800ms linear infinite;
+}
+@keyframes judge-spin { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   Sign-in / sent / denied / error cards
+   ============================================================ */
+.judge-signin {
+  display: flex;
+  justify-content: center;
+  padding: clamp(40px, 8vw, 96px) 0;
+}
+.judge-card {
+  width: 100%;
+  max-width: 460px;
+  background: var(--c-white);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  padding: clamp(28px, 5vw, 40px);
+}
+.judge-h1 {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: clamp(24px, 3.4vw, 30px);
+  line-height: 1.2;
+  color: var(--c-blue);
+  margin: 14px 0 12px;
+}
+.judge-lede {
+  font-family: var(--font);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--fg-65);
+  margin: 0 0 24px;
+}
+.judge-form { display: flex; flex-direction: column; gap: 10px; }
+.judge-label {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-black);
+}
+.judge-form input {
+  font: inherit;
+  font-family: var(--font);
+  font-size: 16px;
+  padding: 11px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--c-white);
+  color: var(--c-black);
+  width: 100%;
+  min-height: 44px;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.judge-form input::placeholder { color: var(--fg-45); }
+.judge-form input:focus {
+  outline: none;
+  border-color: var(--c-blue);
+  box-shadow: 0 0 0 3px rgba(27, 69, 155, 0.18);
+}
+.judge-form button { margin-top: 6px; }
+.judge-err {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--c-red);
+  margin: 4px 0 0;
+}
+.judge-foot {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-family: var(--font);
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--fg-65);
+}
+.judge-foot a { color: var(--c-blue); text-decoration: underline; }
+.judge-foot a:hover { color: var(--c-red); }
+
+/* ============================================================
+   Queue
+   ============================================================ */
+.queue-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 32px;
+  align-items: end;
+  margin-bottom: 28px;
+}
+@media (max-width: 700px) {
+  .queue-head { grid-template-columns: 1fr; gap: 20px; }
+}
+
+.judge-main .judge-h1 { margin-top: 14px; }
+
+.progress-card {
+  background: var(--c-white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  min-width: 200px;
+  position: relative;
+}
+.progress-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--c-blue);
+}
+.progress-card__num {
+  font-family: var(--font);
+  font-weight: 900;
+  font-size: 30px;
+  line-height: 1;
+  color: var(--c-blue);
+  letter-spacing: -0.01em;
+}
+.progress-card__lab {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-65);
+  margin: 4px 0 8px;
+}
+.progress-card__track {
+  height: 4px;
+  background: var(--c-gray);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.progress-card__fill {
+  height: 100%;
+  background: var(--c-red);
+  transition: width 320ms var(--ease);
+}
+
+/* Queue filter pills */
+.queue-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.queue-pill {
+  background: var(--c-white);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  padding: 7px 14px;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-black);
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.queue-pill:hover { border-color: var(--c-blue); }
+.queue-pill.is-active {
+  background: var(--c-blue);
+  color: var(--c-white);
+  border-color: var(--c-blue);
+}
+.queue-pill span {
+  font-family: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+  font-size: 11px;
+  background: var(--c-gray);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--fg-65);
+}
+.queue-pill.is-active span { background: rgba(255, 255, 255, 0.18); color: var(--c-yellow); }
+
+/* Queue rows */
+.queue-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.queue-card {
+  display: grid;
+  grid-template-columns: 1fr 220px auto;
+  gap: 24px;
+  align-items: center;
+  background: var(--c-white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  text-decoration: none;
+  color: var(--c-black);
+  transition: transform var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.queue-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--c-blue);
+}
+.queue-card__meta {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-65);
+  margin-bottom: 6px;
+}
+.queue-card__meta .id-mono {
+  font-family: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+  letter-spacing: 0;
+  text-transform: none;
+  margin-left: 8px;
+}
+.queue-card__title {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1.25;
+  color: var(--c-black);
+  margin: 0 0 6px;
+}
+.queue-card__sub {
+  font-family: var(--font);
+  font-weight: 400;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--fg-65);
+  margin: 0;
+}
+.queue-card__progress {
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--fg-65);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.queue-card__progress-bar {
+  height: 4px;
+  width: 100%;
+  background: var(--c-gray);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.queue-card__progress-fill {
+  height: 100%;
+  background: var(--c-red);
+  transition: width 320ms var(--ease);
+}
+.queue-card__cta {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-blue);
+  white-space: nowrap;
+}
+.queue-card__cta .arr { transition: transform var(--dur) var(--ease); display: inline-block; }
+.queue-card:hover .queue-card__cta .arr { transform: translateX(3px); }
+
+/* Status badge — reused from admin shape */
+.q-badge {
+  display: inline-block;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.q-badge--todo      { background: var(--c-gray); color: var(--fg-65); border: 1px solid var(--line-strong); }
+.q-badge--draft     { background: var(--c-yellow); color: var(--c-black); }
+.q-badge--submitted { background: #d8f3e4; color: #0a7d4d; }
+.q-badge--recused   { background: rgba(140, 29, 64, 0.10); color: var(--c-red); }
+
+@media (max-width: 880px) {
+  .queue-card { grid-template-columns: 1fr; gap: 14px; padding: 18px; }
+  .queue-card__cta { justify-self: start; }
+}
+
+.queue-empty {
+  background: var(--c-white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 56px 32px;
+  text-align: center;
+}
+.queue-empty h3 {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--c-black);
+  margin: 0 0 8px;
+}
+.queue-empty p { color: var(--fg-65); margin: 0; }

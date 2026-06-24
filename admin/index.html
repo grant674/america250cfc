@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Admin dashboard — America250 CFC</title>
+<meta name="description" content="Restricted admin view for the America250 Community Futures Challenge — applications, AI screening verdicts, and program metrics." />
+<meta name="robots" content="noindex,nofollow" />
+<meta name="theme-color" content="#1B459B" />
+<meta property="og:title" content="Admin dashboard — America250 CFC" />
+<meta property="og:description" content="Restricted admin view for the America250 Community Futures Challenge." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://america250cfc.org/admin/" />
+<meta property="og:image" content="https://america250cfc.org/assets/og-image.jpg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="America250 Community Futures Challenge" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Admin dashboard — America250 CFC" />
+<meta name="twitter:description" content="Restricted admin view." />
+<meta name="twitter:image" content="https://america250cfc.org/assets/og-image.jpg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="/styles.css?v=15" />
+<link rel="stylesheet" href="/admin/styles.css?v=6" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body class="admin-body">
+
+<header class="admin-bar">
+  <div class="admin-bar__inner">
+    <a href="/admin/" class="admin-bar__brand">
+      <img src="/assets/pmi250-mark-white.png" alt="PMI U.S. AMERICA 250" width="1160" height="113" />
+      <span class="admin-bar__tag">Admin</span>
+    </a>
+    <div class="admin-bar__meta">
+      <span class="admin-bar__status" id="status-pill">
+        <span class="admin-bar__dot" id="status-dot"></span>
+        <span id="status-text">Loading…</span>
+      </span>
+      <span class="admin-bar__updated" id="updated-at">—</span>
+      <a class="admin-bar__export" id="btn-export" href="/.netlify/functions/admin-export-scores" download>Export CSV</a>
+      <button class="admin-bar__invite" type="button" id="btn-invite-judge">Invite judge</button>
+      <button class="admin-bar__refresh" type="button" id="btn-refresh" aria-label="Refresh now">↻</button>
+    </div>
+  </div>
+</header>
+
+<!-- ============== INVITE-JUDGE MODAL ============== -->
+<div class="invite-modal" id="invite-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="invite-title">
+  <div class="invite-modal__scrim" data-invite-close></div>
+  <div class="invite-modal__panel" role="document">
+    <button class="invite-modal__close" type="button" data-invite-close aria-label="Close">×</button>
+    <span class="rule-bar" aria-hidden="true"></span>
+    <h2 id="invite-title" class="invite-modal__title">Invite a judge</h2>
+    <p class="invite-modal__sub">
+      Adds the email to the judge list and sends a magic-link sign-in email pointing at <code>/judge/</code>.
+    </p>
+    <form id="invite-form" class="invite-form" novalidate>
+      <label class="invite-label">
+        Full name
+        <input type="text" name="name" required maxlength="200" placeholder="Jane Doe" autocomplete="name" />
+      </label>
+      <label class="invite-label">
+        Email
+        <input type="email" name="email" required maxlength="320" placeholder="jane@university.edu" autocomplete="email" />
+      </label>
+      <label class="invite-label">
+        Affiliation (optional)
+        <input type="text" name="affiliation" maxlength="200" placeholder="Org or role" />
+      </label>
+      <div class="invite-form__row">
+        <button type="submit" class="invite-submit" id="invite-submit">Send invite</button>
+        <span class="invite-msg" id="invite-msg"></span>
+      </div>
+    </form>
+  </div>
+</div>
+
+<main id="main">
+
+<section class="container admin-stats" aria-label="Applications at a glance">
+  <h2 class="admin-h">Applications</h2>
+  <p class="admin-sub" id="stats-summary">—</p>
+
+  <div class="stats-grid stats-grid--main" id="stats-grid">
+    <div class="stat-card stat-card--total">
+      <div class="stat-card__label">Total</div>
+      <div class="stat-card__num" data-stat="total">0</div>
+    </div>
+    <div class="stat-card stat-card--ok">
+      <div class="stat-card__label">Screened (passed AI)</div>
+      <div class="stat-card__num" data-stat="screened">0</div>
+    </div>
+    <div class="stat-card stat-card--warn">
+      <div class="stat-card__label">Flagged (needs review)</div>
+      <div class="stat-card__num" data-stat="flagged">0</div>
+    </div>
+    <div class="stat-card stat-card--bad">
+      <div class="stat-card__label">Rejected</div>
+      <div class="stat-card__num" data-stat="rejected">0</div>
+    </div>
+    <div class="stat-card stat-card--neutral">
+      <div class="stat-card__label">Awaiting AI</div>
+      <div class="stat-card__num" data-stat="pending">0</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== JUDGING PROGRESS ============== -->
+<section class="container admin-judging" id="admin-judging" aria-label="Judging progress" hidden>
+  <div class="admin-judging__head">
+    <div>
+      <h2 class="admin-judging__h">Judging progress</h2>
+      <p class="admin-judging__sub" id="judging-sub">—</p>
+    </div>
+    <button type="button" class="admin-judging__toggle" id="btn-toggle-judging" aria-expanded="true" aria-controls="judging-grid">Hide</button>
+  </div>
+  <div class="judging-grid" id="judging-grid"></div>
+</section>
+
+<!-- ============== INBOX ============== -->
+<section class="container admin-inbox" id="admin-inbox" aria-label="Inbox" hidden>
+  <div class="admin-inbox__head">
+    <div>
+      <h2 class="admin-inbox__h">Inbox</h2>
+      <p class="admin-inbox__sub" id="inbox-sub">—</p>
+    </div>
+    <button type="button" class="admin-judging__toggle" id="btn-toggle-inbox" aria-expanded="true" aria-controls="inbox-list">Hide</button>
+  </div>
+  <div class="inbox-controls" id="inbox-controls">
+    <div class="inbox-pills" id="inbox-alias-pills">
+      <button type="button" class="inbox-pill is-active" data-inbox-alias="all">All <span data-inbox-count-alias="all">0</span></button>
+      <button type="button" class="inbox-pill" data-inbox-alias="hello">hello@ <span data-inbox-count-alias="hello">0</span></button>
+      <button type="button" class="inbox-pill" data-inbox-alias="apply">apply@ <span data-inbox-count-alias="apply">0</span></button>
+      <button type="button" class="inbox-pill" data-inbox-alias="press">press@ <span data-inbox-count-alias="press">0</span></button>
+      <button type="button" class="inbox-pill" data-inbox-alias="partnerships">partnerships@ <span data-inbox-count-alias="partnerships">0</span></button>
+      <button type="button" class="inbox-pill" data-inbox-alias="privacy">privacy@ <span data-inbox-count-alias="privacy">0</span></button>
+      <button type="button" class="inbox-pill" data-inbox-alias="legal">legal@ <span data-inbox-count-alias="legal">0</span></button>
+      <button type="button" class="inbox-pill" data-inbox-alias="support">support@ <span data-inbox-count-alias="support">0</span></button>
+      <button type="button" class="inbox-pill" data-inbox-alias="security">security@ <span data-inbox-count-alias="security">0</span></button>
+    </div>
+    <div class="inbox-status-pills" id="inbox-status-pills">
+      <button type="button" class="inbox-pill inbox-pill--status is-active" data-inbox-status="all">All</button>
+      <button type="button" class="inbox-pill inbox-pill--status" data-inbox-status="unread">Unread</button>
+      <button type="button" class="inbox-pill inbox-pill--status" data-inbox-status="read">Read</button>
+      <button type="button" class="inbox-pill inbox-pill--status" data-inbox-status="replied">Replied</button>
+      <button type="button" class="inbox-pill inbox-pill--status" data-inbox-status="spam">Spam</button>
+    </div>
+  </div>
+  <ul class="inbox-list" id="inbox-list"></ul>
+  <div class="inbox-empty" id="inbox-empty" hidden>
+    <h3>Inbox is empty for this filter.</h3>
+    <p>Mail to <code>@america250cfc.org</code> will land here once Resend Inbound is wired up.</p>
+  </div>
+</section>
+
+<section class="container admin-filter" aria-label="Filter">
+  <div class="filter-pills" id="filter-pills">
+    <button type="button" class="filter-pill is-active" data-filter="all">All <span data-count="all">0</span></button>
+    <button type="button" class="filter-pill" data-filter="screened">Screened <span data-count="screened">0</span></button>
+    <button type="button" class="filter-pill" data-filter="flagged">Flagged <span data-count="flagged">0</span></button>
+    <button type="button" class="filter-pill" data-filter="rejected">Rejected <span data-count="rejected">0</span></button>
+    <button type="button" class="filter-pill" data-filter="approved">Approved <span data-count="approved">0</span></button>
+    <button type="button" class="filter-pill" data-filter="in_judging">Judging <span data-count="in_judging">0</span></button>
+    <button type="button" class="filter-pill" data-filter="finalist">Finalist <span data-count="finalist">0</span></button>
+    <button type="button" class="filter-pill" data-filter="winner">Winner <span data-count="winner">0</span></button>
+    <button type="button" class="filter-pill" data-filter="submitted">Awaiting AI <span data-count="submitted">0</span></button>
+  </div>
+  <div class="filter-search">
+    <input type="search" id="search-input" placeholder="Search by name, org, project, email, ID…" autocomplete="off" />
+  </div>
+</section>
+
+<section class="container admin-table-wrap" aria-label="Applications table">
+  <div class="bulk-bar" id="bulk-bar" hidden>
+    <span class="bulk-bar__count" id="bulk-count">0 selected</span>
+    <div class="bulk-bar__actions">
+      <button type="button" class="btn-mini btn-mini--ok" data-bulk-status="approved">Approve</button>
+      <button type="button" class="btn-mini btn-mini--blue" data-bulk-status="in_judging">Send to judging</button>
+      <button type="button" class="btn-mini btn-mini--warn" data-bulk-status="flagged">Flag</button>
+      <button type="button" class="btn-mini btn-mini--bad" data-bulk-status="rejected">Reject</button>
+      <button type="button" class="btn-mini btn-mini--neutral" data-bulk-status="archived">Archive</button>
+      <button type="button" class="btn-mini" id="bulk-clear">Clear</button>
+    </div>
+    <span class="rescreen-msg" id="bulk-msg" aria-live="polite"></span>
+  </div>
+  <div class="admin-empty" id="admin-empty" hidden>
+    <h3>No applications match.</h3>
+    <p>Adjust the filter or search above.</p>
+  </div>
+  <table class="admin-table" id="admin-table">
+    <thead>
+      <tr>
+        <th class="col-check"><input type="checkbox" id="select-all" aria-label="Select all visible" /></th>
+        <th>Submitted</th>
+        <th>Lead</th>
+        <th>Project</th>
+        <th>Where</th>
+        <th>Budget</th>
+        <th>AI</th>
+        <th>Status</th>
+        <th aria-label="Expand"></th>
+      </tr>
+    </thead>
+    <tbody id="admin-tbody">
+      <tr class="admin-loading"><td colspan="9">Loading…</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============== ACTIVITY LOG (#10) ============== -->
+<section class="container admin-activity" id="admin-activity" aria-label="Activity log" hidden>
+  <div class="admin-inbox__head">
+    <div>
+      <h2 class="admin-inbox__h">Activity log</h2>
+      <p class="admin-inbox__sub" id="activity-sub">Recent status changes and notifications</p>
+    </div>
+    <button type="button" class="admin-judging__toggle" id="btn-toggle-activity" aria-expanded="false" aria-controls="activity-list">Show</button>
+  </div>
+  <ol class="activity-list" id="activity-list" hidden></ol>
+</section>
+
+</main>
+
+<!-- ============== APPLICATION DETAIL DRAWER ============== -->
+<aside class="drawer" id="drawer" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+  <div class="drawer__scrim" id="drawer-scrim"></div>
+  <div class="drawer__panel" role="document">
+    <header class="drawer__head">
+      <div>
+        <span class="drawer__id" id="drawer-id">—</span>
+        <h2 class="drawer__title" id="drawer-title">—</h2>
+        <p class="drawer__sub" id="drawer-sub">—</p>
+      </div>
+      <button type="button" class="drawer__close" id="drawer-close" aria-label="Close">×</button>
+    </header>
+
+    <div class="drawer__body" id="drawer-body">
+      <!-- Populated by JS -->
+    </div>
+
+    <footer class="drawer__foot" id="drawer-foot">
+      <span class="drawer__foot-label">Override status</span>
+      <div class="drawer__actions">
+        <button type="button" class="btn-mini btn-mini--ok"     data-set-status="approved">Approve</button>
+        <button type="button" class="btn-mini btn-mini--blue"   data-set-status="in_judging">Send to judging</button>
+        <button type="button" class="btn-mini btn-mini--warn"   data-set-status="flagged">Flag for review</button>
+        <button type="button" class="btn-mini btn-mini--bad"    data-set-status="rejected">Reject</button>
+        <button type="button" class="btn-mini btn-mini--accent" data-set-status="finalist">Mark finalist</button>
+        <button type="button" class="btn-mini btn-mini--gold"   data-set-status="winner">Mark winner</button>
+        <button type="button" class="btn-mini btn-mini--neutral" data-set-status="archived">Archive</button>
+      </div>
+      <span class="drawer__foot-label" style="margin-top:14px;">AI screening</span>
+      <div class="drawer__actions">
+        <button type="button" class="btn-mini btn-mini--blue" id="btn-rescreen">Re-run AI screening</button>
+        <span id="rescreen-msg" class="rescreen-msg" aria-live="polite"></span>
+      </div>
+      <span class="drawer__foot-label" style="margin-top:14px;">Notify applicant</span>
+      <div class="drawer__actions">
+        <button type="button" class="btn-mini btn-mini--accent" id="btn-notify-finalist" data-kind="finalist">Email finalist notice</button>
+        <button type="button" class="btn-mini btn-mini--gold" id="btn-notify-winner" data-kind="winner">Email winner notice</button>
+        <span id="notify-msg" class="rescreen-msg" aria-live="polite"></span>
+      </div>
+    </footer>
+  </div>
+</aside>
+
+<!-- ============== INBOX DETAIL DRAWER ============== -->
+<aside class="drawer inbox-drawer" id="inbox-drawer" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="inbox-drawer-title">
+  <div class="drawer__scrim" id="inbox-drawer-scrim"></div>
+  <div class="drawer__panel" role="document">
+    <header class="drawer__head">
+      <div style="flex:1 1 auto;min-width:0">
+        <span class="drawer__id" id="inbox-drawer-alias">—</span>
+        <h2 class="drawer__title" id="inbox-drawer-title">—</h2>
+        <p class="drawer__sub" id="inbox-drawer-sub">—</p>
+      </div>
+      <button type="button" class="drawer__close" id="inbox-drawer-close" aria-label="Close">×</button>
+    </header>
+
+    <div class="drawer__body" id="inbox-drawer-body">
+      <p style="color:var(--fg-65); font-family:var(--font); font-size:13px">Loading…</p>
+    </div>
+
+    <footer class="drawer__foot drawer__foot--inbox" id="inbox-drawer-foot">
+      <div class="drawer__actions" id="inbox-drawer-actions">
+        <button type="button" class="btn-mini btn-mini--reply" id="btn-inbox-reply">Reply</button>
+        <button type="button" class="btn-mini" data-inbox-action="mark_read">Mark read</button>
+        <button type="button" class="btn-mini" data-inbox-action="mark_unread">Mark unread</button>
+        <button type="button" class="btn-mini btn-mini--warn" data-inbox-action="mark_spam">Spam</button>
+        <button type="button" class="btn-mini btn-mini--neutral" data-inbox-action="archive">Archive</button>
+      </div>
+    </footer>
+  </div>
+</aside>
+
+<!-- ============== REPLY COMPOSER MODAL ============== -->
+<div class="reply-modal" id="reply-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="reply-title">
+  <div class="reply-modal__scrim" data-reply-close></div>
+  <div class="reply-modal__panel" role="document">
+    <button type="button" class="invite-modal__close" data-reply-close aria-label="Close">×</button>
+    <span class="rule-bar" aria-hidden="true"></span>
+    <h2 id="reply-title" class="invite-modal__title">Reply</h2>
+    <p class="invite-modal__sub" id="reply-context">—</p>
+    <form id="reply-form" class="invite-form" novalidate>
+      <label class="invite-label">
+        To
+        <input type="email" name="to" id="reply-to" required maxlength="320" />
+      </label>
+      <label class="invite-label">
+        Subject
+        <input type="text" name="subject" id="reply-subject" required maxlength="500" />
+      </label>
+      <label class="invite-label">
+        Message
+        <textarea name="text" id="reply-text" rows="8" required maxlength="50000" placeholder="Write your reply..."></textarea>
+      </label>
+      <div class="invite-form__row">
+        <button type="submit" class="invite-submit" id="reply-submit">Send reply</button>
+        <span class="invite-msg" id="reply-msg"></span>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/admin/script.js?v=8" defer></script>
+</body>
+</html>

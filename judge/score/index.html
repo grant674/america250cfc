@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Score application — America250 CFC</title>
+<meta name="description" content="Score an application for the America250 Community Futures Challenge." />
+<meta name="theme-color" content="#1B459B" />
+<meta name="robots" content="noindex,nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="preconnect" href="https://emhcsinxtxshdgiceofa.supabase.co" />
+<link rel="stylesheet" href="/styles.css?v=15" />
+<link rel="stylesheet" href="/judge/styles.css?v=2" />
+<link rel="stylesheet" href="/judge/score/styles.css?v=2" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body class="judge-body">
+
+<header class="judge-bar">
+  <div class="judge-bar__inner">
+    <a href="/judge/" class="judge-bar__brand">
+      <img src="/assets/pmi250-mark-white.png" alt="PMI U.S. AMERICA 250" width="1160" height="113" />
+      <span class="judge-bar__tag">Judge portal</span>
+    </a>
+    <div class="judge-bar__meta">
+      <span class="judge-bar__who" id="judge-who" hidden></span>
+      <button class="judge-bar__signout" id="btn-signout" type="button" hidden>Sign out</button>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="judge-main">
+
+  <!-- Loading -->
+  <section class="judge-loading" id="judge-loading">
+    <div class="judge-spinner" aria-hidden="true"></div>
+    <p>Loading application…</p>
+  </section>
+
+  <!-- Error -->
+  <section class="judge-signin" id="judge-error" hidden>
+    <div class="judge-card">
+      <span class="rule-bar" aria-hidden="true"></span>
+      <h1 class="judge-h1">Couldn't load this application.</h1>
+      <p class="judge-lede" id="error-msg">Please return to the queue and try again.</p>
+      <a class="btn btn--ghost-blue" href="/judge/">← Back to queue</a>
+    </div>
+  </section>
+
+  <!-- Not authorized / no session -->
+  <section class="judge-signin" id="judge-noauth" hidden>
+    <div class="judge-card">
+      <span class="rule-bar" aria-hidden="true"></span>
+      <h1 class="judge-h1">Sign in required.</h1>
+      <p class="judge-lede">Your session has expired. Please sign back in.</p>
+      <a class="btn btn--blue" href="/judge/">Go to sign in →</a>
+    </div>
+  </section>
+
+  <!-- Score view -->
+  <section class="score-view" id="score-view" hidden>
+    <a class="score-back" href="/judge/">← Back to queue</a>
+
+    <header class="score-head">
+      <div class="score-head__meta">
+        <span class="score-head__id" id="app-id-short">—</span>
+        <span class="score-head__status" id="score-status-pill">Not started</span>
+      </div>
+      <h1 class="score-head__title" id="app-title">—</h1>
+      <p class="score-head__sub" id="app-sub">—</p>
+    </header>
+
+    <div class="score-grid">
+
+      <!-- Left: application read view -->
+      <article class="score-read" id="score-read">
+        <!-- Sections populated by JS -->
+      </article>
+
+      <!-- Right: scoring panel -->
+      <aside class="score-panel" id="score-panel" aria-label="Score this application">
+        <div class="score-panel__head">
+          <div>
+            <h2 class="score-panel__title">Your score</h2>
+            <p class="score-panel__save" id="save-status">Auto-saves as you go</p>
+          </div>
+          <div class="score-total" aria-live="polite">
+            <span class="score-total__num" id="total-num">—</span>
+            <span class="score-total__lab">/ 100</span>
+          </div>
+        </div>
+
+        <div class="score-panel__body" id="dims-body">
+          <!-- 5 dimension rows rendered by JS -->
+        </div>
+
+        <div class="score-panel__foot">
+          <button type="button" class="score-recuse" id="btn-recuse">Recuse</button>
+          <button type="button" class="score-submit" id="btn-submit">Submit final →</button>
+        </div>
+
+        <div class="score-locked" id="score-locked" hidden>
+          <span class="rule-bar" aria-hidden="true"></span>
+          <h3 id="locked-h">Submitted</h3>
+          <p id="locked-p">Your scores are submitted and locked. Contact the admin if you need to change them.</p>
+        </div>
+      </aside>
+
+    </div>
+  </section>
+
+</main>
+
+<!-- Confirm-submit modal -->
+<div class="confirm-modal" id="confirm-modal" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="confirm-modal__scrim" data-confirm-close></div>
+  <div class="confirm-modal__panel" role="document">
+    <span class="rule-bar" aria-hidden="true"></span>
+    <h2 id="confirm-title">Confirm</h2>
+    <p id="confirm-body">Are you sure?</p>
+    <div class="confirm-modal__row">
+      <button type="button" class="btn btn--ghost-blue" data-confirm-close>Cancel</button>
+      <button type="button" class="btn btn--blue" id="confirm-go">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script src="/judge/score/script.js?v=4" defer></script>
+</body>
+</html>

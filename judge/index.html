@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Judge portal — America250 CFC</title>
+<meta name="description" content="Judge portal for the America250 Community Futures Challenge." />
+<meta name="theme-color" content="#1B459B" />
+<meta name="robots" content="noindex,nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="preconnect" href="https://emhcsinxtxshdgiceofa.supabase.co" />
+<link rel="stylesheet" href="/styles.css?v=15" />
+<link rel="stylesheet" href="/judge/styles.css?v=2" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body class="judge-body">
+
+<header class="judge-bar">
+  <div class="judge-bar__inner">
+    <a href="/judge/" class="judge-bar__brand">
+      <img src="/assets/pmi250-mark-white.png" alt="PMI U.S. AMERICA 250" width="1160" height="113" />
+      <span class="judge-bar__tag">Judge portal</span>
+    </a>
+    <div class="judge-bar__meta">
+      <span class="judge-bar__who" id="judge-who" hidden></span>
+      <button class="judge-bar__signout" id="btn-signout" type="button" hidden>Sign out</button>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="judge-main">
+
+  <!-- ============== LOADING ============== -->
+  <section class="judge-loading" id="judge-loading">
+    <div class="judge-spinner" aria-hidden="true"></div>
+    <p>Loading…</p>
+  </section>
+
+  <!-- ============== SIGN-IN ============== -->
+  <section class="judge-signin" id="judge-signin" hidden>
+    <div class="judge-card">
+      <span class="rule-bar" aria-hidden="true"></span>
+      <h1 class="judge-h1">Sign in to score.</h1>
+      <p class="judge-lede">
+        Enter the email address associated with your invitation. We'll send a one-click sign-in link.
+      </p>
+      <form id="judge-signin-form" class="judge-form" novalidate>
+        <label for="signin-email" class="judge-label">Email</label>
+        <input id="signin-email" type="email" name="email" required autocomplete="email"
+          placeholder="you@organization.org"
+          autocapitalize="none" autocorrect="off" spellcheck="false" />
+        <button type="submit" class="btn btn--blue btn--lg" id="signin-submit">
+          Send magic link <span class="arr" aria-hidden="true">→</span>
+        </button>
+        <p class="judge-err" id="signin-err" hidden></p>
+      </form>
+      <p class="judge-foot">
+        Trouble signing in? Reach <a href="mailto:apply@america250cfc.org">apply@america250cfc.org</a>.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============== LINK-SENT ============== -->
+  <section class="judge-signin" id="judge-sent" hidden>
+    <div class="judge-card">
+      <span class="rule-bar" aria-hidden="true"></span>
+      <h1 class="judge-h1">Check your email.</h1>
+      <p class="judge-lede">
+        If <strong id="sent-email">your email</strong> is on the judge list, a sign-in link is on its way. It expires in one hour.
+      </p>
+      <button type="button" class="btn btn--ghost-blue" id="btn-back-signin">Back</button>
+    </div>
+  </section>
+
+  <!-- ============== NOT-AUTHORIZED ============== -->
+  <section class="judge-signin" id="judge-denied" hidden>
+    <div class="judge-card">
+      <span class="rule-bar" aria-hidden="true"></span>
+      <h1 class="judge-h1">Not on the judge list.</h1>
+      <p class="judge-lede">
+        This email isn't authorized to score applications. If you believe this is a mistake, write
+        <a href="mailto:apply@america250cfc.org">apply@america250cfc.org</a>.
+      </p>
+      <button type="button" class="btn btn--ghost-blue" id="btn-denied-signout">Sign out</button>
+    </div>
+  </section>
+
+  <!-- ============== QUEUE ============== -->
+  <section class="judge-queue" id="judge-queue" hidden>
+    <header class="queue-head">
+      <div>
+        <span class="rule-bar" aria-hidden="true"></span>
+        <h1 class="judge-h1">Your queue.</h1>
+        <p class="judge-lede" id="queue-lede">—</p>
+      </div>
+      <div class="progress-card" id="progress-card">
+        <div class="progress-card__num"><span id="progress-done">0</span> / <span id="progress-total">0</span></div>
+        <div class="progress-card__lab">Scored</div>
+        <div class="progress-card__track">
+          <div class="progress-card__fill" id="progress-fill" style="width:0%"></div>
+        </div>
+      </div>
+    </header>
+
+    <div class="queue-filters">
+      <button type="button" class="queue-pill is-active" data-queue-filter="todo">To do <span id="cnt-todo">0</span></button>
+      <button type="button" class="queue-pill" data-queue-filter="draft">In progress <span id="cnt-draft">0</span></button>
+      <button type="button" class="queue-pill" data-queue-filter="submitted">Submitted <span id="cnt-submitted">0</span></button>
+      <button type="button" class="queue-pill" data-queue-filter="recused">Recused <span id="cnt-recused">0</span></button>
+      <button type="button" class="queue-pill" data-queue-filter="all">All <span id="cnt-all">0</span></button>
+    </div>
+
+    <ul class="queue-list" id="queue-list"></ul>
+
+    <div class="queue-empty" id="queue-empty" hidden>
+      <h3>Nothing to score right now.</h3>
+      <p>When more applications enter the judging phase, they'll appear here.</p>
+    </div>
+  </section>
+
+  <!-- ============== ERROR ============== -->
+  <section class="judge-signin" id="judge-error" hidden>
+    <div class="judge-card">
+      <span class="rule-bar" aria-hidden="true"></span>
+      <h1 class="judge-h1">Something went wrong.</h1>
+      <p class="judge-lede" id="error-msg">We hit an error loading your queue. Please try again.</p>
+      <button type="button" class="btn btn--blue" id="btn-retry">Try again</button>
+    </div>
+  </section>
+
+</main>
+
+<script src="/judge/script.js?v=3" defer></script>
+</body>
+</html>

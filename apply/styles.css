@@ -1,0 +1,666 @@
+/* ============================================================
+   America250 Community Futures Challenge — application form
+   Inherits global tokens from /styles.css.
+   Adds multi-step form chrome on top of the design system.
+   ============================================================ */
+
+.apply-saved {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-65);
+  padding: 6px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .apply-saved { padding: 4px 8px; font-size: 10px; }
+}
+@media (max-width: 380px) {
+  .apply-saved { display: none; }
+}
+.apply-saved::before {
+  content: "•";
+  color: var(--c-red);
+  margin-right: 6px;
+  font-size: 18px;
+  line-height: 0;
+  vertical-align: middle;
+}
+.apply-saved.is-fresh::before { color: var(--c-blue); }
+
+/* ---------- Header ---------- */
+.apply-header {
+  padding: 128px 0 clamp(28px, 4vw, 40px);
+  background: var(--c-white);
+}
+.apply-h {
+  font-family: var(--font);
+  font-weight: 900;
+  font-size: clamp(36px, 5.5vw, 64px);
+  line-height: var(--lh-hero);
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+  color: var(--c-black);
+  margin: 16px 0 16px;
+  max-width: 18ch;
+}
+.apply-lede {
+  font-family: var(--font);
+  font-weight: 400;
+  font-size: clamp(16px, 1.5vw, 19px);
+  line-height: 1.55;
+  color: var(--fg-65);
+  max-width: 64ch;
+  margin: 0;
+}
+
+/* ---------- Just-in-time privacy notice ---------- */
+.apply-jit {
+  background: var(--c-gray);
+  border-left: 3px solid var(--c-blue);
+  padding: 16px 0;
+}
+.apply-jit__title {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--c-black);
+  margin: 0 0 4px;
+}
+.apply-jit__body {
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--fg-65);
+  max-width: 72ch;
+  margin: 0;
+}
+.apply-jit__body a {
+  color: var(--c-blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ---------- Save & resume link (#8) ---------- */
+.apply-resume { margin: 14px 0 0; font-size: 13px; }
+.apply-resume__btn {
+  font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  color: var(--c-blue); background: transparent;
+  border: 1px solid var(--c-blue); border-radius: var(--radius-pill, 999px);
+  padding: 6px 14px;
+}
+.apply-resume__btn:hover { background: var(--c-blue); color: #fff; }
+.apply-resume__msg { display: inline-block; margin-left: 10px; color: var(--fg-65); }
+
+/* ---------- Turnstile verification widget ---------- */
+.apply-verify {
+  margin: 20px 0 4px;
+  min-height: 65px; /* reserve space so the layout doesn't jump when it loads */
+}
+
+/* ---------- Progress bar (sticky) ---------- */
+.apply-progress {
+  position: sticky;
+  top: 72px;
+  z-index: 20;
+  background: var(--c-white);
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.apply-progress__track {
+  width: 100%;
+  height: 4px;
+  background: var(--c-gray);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.apply-progress__fill {
+  height: 100%;
+  width: 0%;
+  background: var(--c-red);
+  transition: width 320ms var(--ease);
+}
+.apply-progress__steps {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+.apply-progress__step {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--fg-65);
+  border-radius: var(--radius-md);
+  transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+.apply-progress__step span {
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--fg-60);
+  display: block;
+  margin-bottom: 2px;
+}
+.apply-progress__step:hover {
+  background: var(--c-gray);
+  color: var(--c-black);
+}
+.apply-progress__step.is-active {
+  color: var(--c-black);
+  background: var(--c-gray);
+}
+.apply-progress__step.is-active span { color: var(--c-red); }
+.apply-progress__step.is-done { color: var(--c-black); }
+.apply-progress__step.is-done span { color: var(--c-blue); }
+.apply-progress__step.is-done span::after { content: " ✓"; }
+.apply-progress__step:disabled { cursor: not-allowed; opacity: 0.5; }
+
+@media (max-width: 880px) {
+  .apply-progress { top: 64px; padding: 10px 0; }
+  .apply-progress__steps {
+    grid-template-columns: repeat(6, minmax(72px, 1fr));
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding-bottom: 4px;
+    /* Right-edge fade hint so users see the scrollable overflow. */
+    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 24px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 24px), transparent 100%);
+  }
+  .apply-progress__step { font-size: 11px; padding: 6px 8px; white-space: nowrap; }
+  .apply-progress__step span { font-size: 9px; }
+}
+
+/* ---------- Form ---------- */
+.apply-form {
+  padding: clamp(32px, 5vw, 56px) 0 clamp(72px, 10vw, 112px);
+  max-width: 880px;
+}
+
+.step { animation: stepIn 240ms var(--ease); }
+@keyframes stepIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.step__h {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: clamp(24px, 3.4vw, 36px);
+  line-height: 1.2;
+  color: var(--c-blue);
+  margin: 0 0 10px;
+}
+.step__sub {
+  font-family: var(--font);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--fg-65);
+  max-width: 64ch;
+  margin: 0 0 32px;
+}
+.step__sub a { color: var(--c-blue); text-decoration: underline; text-underline-offset: 2px; }
+.step__sub a:hover { color: var(--c-red); }
+.step__sectionH {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: clamp(18px, 2vw, 22px);
+  line-height: 1.2;
+  color: var(--c-black);
+  margin: 32px 0 16px;
+}
+
+/* ---------- Eligibility (radio rows) ---------- */
+.elig {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+.elig__q {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 18px 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: center;
+}
+.elig__q legend {
+  font-family: var(--font);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--c-black);
+  padding: 0;
+}
+.elig__q legend strong { color: var(--c-black); font-weight: 700; }
+.elig__choices { display: flex; gap: 8px; }
+@media (max-width: 600px) {
+  .elig__q { grid-template-columns: 1fr; gap: 12px; }
+}
+
+.radio {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  padding: 10px 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--c-white);
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--c-black);
+  min-width: 80px;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.radio input { position: absolute; opacity: 0; pointer-events: none; }
+.radio:hover { border-color: var(--c-blue); }
+.radio:has(input:checked) {
+  background: var(--c-blue);
+  color: var(--c-white);
+  border-color: var(--c-blue);
+}
+
+.elig__fail {
+  margin-top: 24px;
+  padding: 22px 26px;
+  border: 1px solid var(--c-red);
+  background: rgba(140, 29, 64, 0.05);
+  border-radius: var(--radius-md);
+}
+.elig__fail h3 {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1.2;
+  color: var(--c-red);
+  margin: 0 0 8px;
+}
+.elig__fail p {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--c-black);
+  margin: 0;
+}
+.elig__fail a { color: var(--c-red); text-decoration: underline; }
+
+/* ---------- Form fields ---------- */
+.grid { display: grid; gap: 20px; }
+.grid--2 { grid-template-columns: 1fr 1fr; }
+@media (max-width: 700px) { .grid--2 { grid-template-columns: 1fr; } }
+
+.apply-form .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+  position: relative;
+}
+.apply-form .field--block { display: block; }
+.field__label {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-black);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.field__hint {
+  font-family: var(--font);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--fg-65);
+  margin-bottom: 2px;
+  display: block;
+}
+.apply-form .field input,
+.apply-form .field select,
+.apply-form .field textarea {
+  font: inherit;
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 400;
+  padding: 11px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--c-white);
+  color: var(--c-black);
+  width: 100%;
+  min-height: 44px;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.apply-form .field textarea { resize: vertical; line-height: 1.55; padding: 12px 14px; min-height: 120px; }
+.apply-form .field input::placeholder,
+.apply-form .field textarea::placeholder { color: var(--fg-45); }
+.apply-form .field input:focus,
+.apply-form .field select:focus,
+.apply-form .field textarea:focus {
+  outline: none;
+  border-color: var(--c-blue);
+  box-shadow: 0 0 0 3px rgba(27, 69, 155, 0.18);
+}
+.apply-form .field input:invalid:not(:placeholder-shown),
+.apply-form .field select:invalid:not(:focus),
+.apply-form .field textarea:invalid:not(:placeholder-shown):not(:focus) {
+  border-color: var(--c-red);
+}
+.field__count {
+  position: absolute;
+  bottom: 6px;
+  right: 10px;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--fg-65);
+  background: var(--c-white);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+}
+.field__count.is-near { color: var(--c-red); }
+.field__count.is-over { color: var(--c-red); font-weight: 900; }
+
+.field__money { position: relative; display: flex; align-items: center; }
+.field__money span {
+  position: absolute;
+  left: 14px;
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--fg-65);
+  pointer-events: none;
+  /* Lock the glyph to a fixed-width box so it can never overlap the input text,
+     regardless of font fallbacks or browser rendering quirks. */
+  width: 14px;
+  text-align: left;
+}
+.field__money input { padding-left: 36px; }
+
+.req {
+  color: var(--c-red);
+  font-weight: 700;
+  margin-left: 4px;
+}
+.rubric {
+  margin-left: auto;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--c-black);
+  background: var(--c-yellow);
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  text-transform: uppercase;
+}
+
+/* ---------- Upload zone ---------- */
+.upload { margin: 12px 0 24px; }
+.upload__label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 36px 24px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--c-white);
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  text-align: center;
+}
+.upload__label:hover,
+.upload.is-dragover .upload__label {
+  background: var(--c-gray);
+  border-color: var(--c-blue);
+  border-style: solid;
+}
+.upload__title {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--c-black);
+}
+.upload__sub {
+  font-family: var(--font);
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--fg-65);
+}
+.upload__list {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.upload__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--c-gray);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--c-red);
+  border-radius: var(--radius-md);
+  font-family: var(--font);
+  font-size: 14px;
+}
+.upload__item-name { color: var(--c-black); font-weight: 700; }
+.upload__item-size { color: var(--fg-65); font-size: 12px; }
+.upload__remove {
+  background: none;
+  border: 0;
+  color: var(--c-red);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 0 4px;
+}
+.upload__remove:hover { color: var(--c-black); }
+
+/* ---------- Review ---------- */
+.review {
+  border: 1px solid var(--line);
+  background: var(--c-gray);
+  border-radius: var(--radius-md);
+  padding: clamp(20px, 3vw, 28px);
+  margin-bottom: 28px;
+}
+.review__group {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.review__group:last-child { border-bottom: 0; }
+.review__group-h {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-65);
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.review__edit {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--c-blue);
+  text-decoration: underline;
+  background: 0;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.review__edit:hover { color: var(--c-red); }
+.review__row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 16px;
+  padding: 8px 0;
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+.review__row dt { color: var(--fg-65); }
+.review__row dd { color: var(--c-black); margin: 0; white-space: pre-wrap; word-break: break-word; }
+.review__row dd.empty { color: var(--fg-65); font-style: italic; }
+@media (max-width: 600px) {
+  .review__row { grid-template-columns: 1fr; gap: 4px; }
+}
+
+/* ---------- Legal ---------- */
+.legal {
+  border: 0;
+  margin: 0;
+  padding: 24px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.checkbox {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 12px;
+  align-items: start;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--c-black);
+}
+.checkbox input {
+  width: 20px; height: 20px;
+  margin: 1px 0 0;
+  accent-color: var(--c-blue);
+  cursor: pointer;
+}
+.checkbox a { color: var(--c-blue); text-decoration: underline; }
+.checkbox a:hover { color: var(--c-red); }
+
+/* ---------- Step nav ---------- */
+.step-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.step-nav__meta {
+  margin-left: auto;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-65);
+}
+@media (max-width: 600px) {
+  .step-nav__meta {
+    margin-left: 0;
+    flex-basis: 100%;
+    text-align: left;
+    margin-top: 4px;
+  }
+}
+
+/* ---------- Inline error ---------- */
+.field.is-error input,
+.field.is-error select,
+.field.is-error textarea {
+  border-color: var(--c-red);
+  box-shadow: 0 0 0 3px rgba(140, 29, 64, 0.15);
+}
+.field__error {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--c-red);
+  margin-top: 6px;
+}
+
+/* ---------- Success page ---------- */
+.apply-success {
+  padding: clamp(60px, 10vw, 120px) 0;
+}
+.success-id {
+  font-family: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+  font-size: 13px;
+  color: var(--fg-65);
+  margin: 12px 0 24px;
+}
+.success-id code {
+  background: var(--c-gray);
+  border: 1px solid var(--line);
+  padding: 6px 12px;
+  display: inline-block;
+  border-radius: var(--radius-md);
+  color: var(--c-black);
+  letter-spacing: 0.02em;
+  word-break: break-all;
+}
+
+/* ---------- Social share ---------- */
+.apply-share {
+  margin: 8px 0 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.apply-share__label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--fg-65);
+  margin: 0 0 14px;
+}
+.apply-share__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+/* .btn sets display:inline-flex, which would override the [hidden] attribute on
+   the native-share button. Keep it hidden until JS confirms navigator.share. */
+.apply-share .share-btn[hidden] {
+  display: none !important;
+}
+.apply-share__msg {
+  display: block;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--fg-65);
+  min-height: 1.2em;
+}
