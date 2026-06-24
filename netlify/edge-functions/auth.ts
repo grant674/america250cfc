@@ -418,17 +418,30 @@ export default async (
   const adminPassword = Deno.env.get("ADMIN_PASSWORD") ?? "";
   const serverSecret = Deno.env.get("NN_AUTH_SECRET") ?? "";
 
-  // Fail-closed: if SITE_PASSWORD or NN_AUTH_SECRET isn't configured, deny
-  // everything except the explicitly excluded paths.
-  if (!sitePassword || !serverSecret) {
+  // SITE_PUBLIC=true disables ONLY the Tier-1 site gate so the site serves
+  // publicly (going live). The admin gate (/admin/*), the canonical-host
+  // redirect, and the source-file blocking above all stay active. Set this
+  // env var + redeploy to launch; remove it to restore the preview gate.
+  const sitePublic = (Deno.env.get("SITE_PUBLIC") ?? "").trim().toLowerCase() === "true";
+
+  // Fail-closed: when the site gate is ON (not public), SITE_PASSWORD and
+  // NN_AUTH_SECRET must both be configured or we deny everything. When
+  // SITE_PUBLIC is set the gate is intentionally off, so a missing
+  // SITE_PASSWORD is fine — the admin gate guards itself separately below.
+  if (!sitePublic && (!sitePassword || !serverSecret)) {
     return new Response("Auth not configured", {
       status: 503,
       headers: { "Cache-Control": "no-store" },
     });
   }
 
-  const expectedSiteToken = await sessionToken(serverSecret, "nn-session-v1", sitePassword);
-  const expectedAdminToken = adminPassword
+  // Skip token derivation that isn't needed (and avoid an empty-key HMAC when
+  // public with no secret set): the site token is unused in public mode, and
+  // both tokens require the server secret.
+  const expectedSiteToken = (!sitePublic && serverSecret)
+    ? await sessionToken(serverSecret, "nn-session-v1", sitePassword)
+    : "";
+  const expectedAdminToken = (adminPassword && serverSecret)
     ? await sessionToken(serverSecret, "nn-admin-v1", adminPassword)
     : "";
 
@@ -461,6 +474,15 @@ export default async (
     const out = new Response(response.body, response);
     noStore(out.headers);
     return out;
+  }
+
+  // -------- Public mode (SITE_PUBLIC=true): site gate off --------
+  // Step aside so Netlify serves the page with its normal cache headers
+  // (netlify.toml). Returning void passes the request through unmodified — no
+  // gate, and no forced no-store, so the live site can be CDN-cached. Admin
+  // (/admin/*) was already handled above and stays protected.
+  if (sitePublic) {
+    return;
   }
 
   // -------- Everything else — site gate --------
