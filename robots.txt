@@ -1,0 +1,10 @@
+# America250 Community Futures Challenge — robots.txt
+# Public content is crawlable at launch; staff/judge surfaces and raw source are not.
+# (During the private-preview period the site-wide password gate blocks all crawling.)
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /judge/
+Disallow: /netlify/
+
+Sitemap: https://america250cfc.org/sitemap.xml

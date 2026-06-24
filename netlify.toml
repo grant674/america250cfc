@@ -1,0 +1,68 @@
+# ============================================================================
+# netlify.toml — america250cfc.org (nextnow-demo)
+# ----------------------------------------------------------------------------
+# AUTHORITATIVE as of 2026-06-15: this file was deployed to production via
+# `netlify deploy --prod` and its [[headers]] were verified to match the live
+# site's response headers exactly (deploy 6a30b414…). The original site had no
+# git repo / local source; these header rules were reconstructed from observed
+# live headers and are now the source of truth.
+#
+# Deploys: `netlify deploy` (draft) from this dir → verify on the draft URL →
+# `netlify deploy --prod`. The CLI correctly re-bundles the Netlify Functions
+# (netlify/functions/) AND the edge auth function (netlify/edge-functions/).
+# The canonical-host redirect + password gate live in the edge function, not here.
+# ============================================================================
+
+[build]
+  publish = "."
+  functions = "netlify/functions"
+  edge_functions = "netlify/edge-functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# --- Global security headers (observed on every static response) ---
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' https://challenges.cloudflare.com; connect-src 'self' https://emhcsinxtxshdgiceofa.supabase.co wss://emhcsinxtxshdgiceofa.supabase.co https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
+    # NOTE: the netlify.toml-level HSTS is 1 year (confirmed from deploy-permalink
+    # headers). The custom domain america250cfc.org shows a longer max-age from a
+    # separate Netlify domain-level HSTS setting that overrides this on the apex.
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "accelerometer=(), ambient-light-sensor=(), autoplay=(), battery=(), camera=(), display-capture=(), document-domain=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), idle-detection=(), magnetometer=(), microphone=(), midi=(), navigation-override=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), speaker-selection=(), sync-xhr=(), usb=(), web-share=(self), xr-spatial-tracking=(), interest-cohort=(), browsing-topics=()"
+    X-DNS-Prefetch-Control = "off"
+    X-Permitted-Cross-Domain-Policies = "none"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Resource-Policy = "same-site"
+
+# --- Long-lived immutable assets ---
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public,max-age=31536000,immutable"
+
+# --- Favicon ---
+[[headers]]
+  for = "/favicon.svg"
+  [headers.values]
+    Cache-Control = "public,max-age=86400,must-revalidate"
+
+# --- JS/CSS: revalidate every load (cache-busting done via ?v= query) ---
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public,max-age=0,must-revalidate"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public,max-age=0,must-revalidate"
+
+# NOTE: The canonical-host 301 (aliases -> america250cfc.org) and the
+# two-tier password gate are implemented in netlify/edge-functions/auth.ts,
+# NOT here. Pretty-URL trailing-slash redirects (/apply -> /apply/) are
+# Netlify's automatic default behavior.
