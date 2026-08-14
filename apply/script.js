@@ -197,6 +197,17 @@
     });
   });
 
+  // ---------- EIN reveal — nonprofits only ----------
+  var eligNonprofit = document.getElementById('elig-nonprofit');
+  var einField = document.getElementById('org-ein-field');
+  var einInput = form.querySelector('[name="org_ein"]');
+  function toggleEin() {
+    var show = !!(eligNonprofit && eligNonprofit.value === 'yes');
+    if (einField) einField.hidden = !show;
+    if (!show && einInput) einInput.value = '';
+  }
+  if (eligNonprofit) eligNonprofit.addEventListener('change', toggleEin);
+
   // ---------- Step navigation ----------
   function showStep(n, opts) {
     opts = opts || {};
@@ -747,7 +758,7 @@
   // application can continue on a different device. Otherwise use localStorage.
   var urlResume = null;
   try { urlResume = new URLSearchParams(location.search).get('resume'); } catch (e) {}
-  function finishBoot() { showStep(current, { silent: true }); checkEligibility(); updateResumeLink(); }
+  function finishBoot() { showStep(current, { silent: true }); checkEligibility(); toggleEin(); updateResumeLink(); }
   if (urlResume && TOKEN_RE.test(urlResume)) {
     resumeToken = urlResume;
     try { localStorage.setItem(TOKEN_KEY, urlResume); } catch (e) {}

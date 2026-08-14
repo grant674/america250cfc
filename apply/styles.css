@@ -319,6 +319,11 @@
   position: relative;
 }
 .apply-form .field--block { display: block; }
+/* .field sets display:flex, which would override the [hidden] attribute used
+   to conditionally reveal the EIN field for nonprofits. */
+.apply-form .field[hidden] {
+  display: none !important;
+}
 .field__label {
   font-family: var(--font);
   font-weight: 700;

@@ -207,14 +207,15 @@
         </label>
         <label class="field">
           <span class="field__label">Registered 501(c)(3) nonprofit? (optional)</span>
-          <select name="elig_nonprofit">
+          <select name="elig_nonprofit" id="elig-nonprofit">
             <option value="">Select one…</option>
             <option value="yes">Yes</option>
             <option value="no">No</option>
           </select>
         </label>
-        <label class="field">
+        <label class="field" id="org-ein-field" hidden>
           <span class="field__label">EIN (optional)</span>
+          <span class="field__hint">Your organization's Employer Identification Number — helps us verify your nonprofit status.</span>
           <input type="text" name="org_ein" maxlength="10" placeholder="12-3456789" inputmode="numeric" autocomplete="off" />
         </label>
       </div>
