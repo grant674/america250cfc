@@ -128,12 +128,16 @@ CREATE TRIGGER trg_log_application_status AFTER UPDATE ON public.applications
 -- (lead_phone was removed from the schema entirely — see migration note at end.)
 REVOKE SELECT ON public.applications FROM anon;
 REVOKE SELECT ON public.applications FROM authenticated;
+-- org_ein is deliberately withheld from judges (identity-revealing, same
+-- reasoning that already withholds org_name/org_url). elig_nonprofit is a
+-- plain yes/no self-attest, same class as the other elig_* columns, so it's
+-- granted like the rest.
 GRANT SELECT (
-  id, created_at, updated_at, status, lead_role, org_type, org_has_entity, team_desc,
+  id, created_at, updated_at, status, lead_role, org_type, team_desc,
   proj_title, proj_summary, proj_category, proj_phase, proj_city, proj_state, proj_communities,
   proj_budget_total, proj_budget_raised, proj_use_of_funds, proj_video_url,
   impact_community, impact_innovation, impact_feasibility, impact_sustainability, impact_founder_team,
-  elig_age, elig_audience, elig_phase, elig_scope, elig_coi
+  elig_age, elig_audience, elig_phase, elig_scope, elig_coi, elig_nonprofit
 ) ON public.applications TO authenticated;
 
 DROP POLICY IF EXISTS applications_judge_select ON public.applications;
@@ -195,3 +199,16 @@ CREATE POLICY "upload_attachments_for_real_apps" ON storage.objects FOR INSERT T
 -- reference it; the column was dropped from the schema.
 -- ---------------------------------------------------------------------------
 -- ALTER TABLE public.applications DROP COLUMN IF EXISTS lead_phone;
+
+-- ---------------------------------------------------------------------------
+-- Migration 2026-08-14: applications restricted to registered 501(c)(3)
+-- nonprofits only. Added a 6th hard-gated eligibility question
+-- (elig_nonprofit) and an EIN field (org_ein) collected in place of the old
+-- "registered business entity?" question. org_type is retained but is no
+-- longer a real choice — the form now only ever submits "501c3".
+-- Re-run the GRANT SELECT above after applying, so judges pick up
+-- elig_nonprofit (org_ein is intentionally excluded from that grant).
+-- ---------------------------------------------------------------------------
+-- ALTER TABLE public.applications ADD COLUMN IF NOT EXISTS elig_nonprofit text;
+-- ALTER TABLE public.applications ADD COLUMN IF NOT EXISTS org_ein text;
+-- ALTER TABLE public.applications DROP COLUMN IF EXISTS org_has_entity;

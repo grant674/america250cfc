@@ -110,7 +110,7 @@
     <!-- ============== STEP 1: ELIGIBILITY ============== -->
     <section class="step" data-step="1">
       <h2 class="step__h">Eligibility</h2>
-      <p class="step__sub">A quick check before we get into the details. All five must be <strong>yes</strong> for your project to be eligible. If anything's not, common eligibility requirements live in our <a href="/#faq">FAQ</a>.</p>
+      <p class="step__sub">A quick check before we get into the details. All six must be <strong>yes</strong> for your project to be eligible. If anything's not, common eligibility requirements live in our <a href="/#faq">FAQ</a>.</p>
 
       <div class="elig">
         <fieldset class="elig__q">
@@ -152,6 +152,14 @@
             <label class="radio"><input type="radio" name="elig_coi" value="no" required /> <span>No</span></label>
           </div>
         </fieldset>
+
+        <fieldset class="elig__q">
+          <legend>Our organization is a <strong>registered 501(c)(3) nonprofit</strong>.</legend>
+          <div class="elig__choices">
+            <label class="radio"><input type="radio" name="elig_nonprofit" value="yes" required /> <span>Yes</span></label>
+            <label class="radio"><input type="radio" name="elig_nonprofit" value="no" required /> <span>No</span></label>
+          </div>
+        </fieldset>
       </div>
 
       <div class="elig__fail" id="elig-fail" hidden>
@@ -191,27 +199,16 @@
           <input type="url" name="org_url" maxlength="300" placeholder="organization.org" inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false" />
         </label>
         <label class="field">
-          <span class="field__label">Tax status <span class="req">*</span></span>
+          <span class="field__label">Tax status</span>
           <select name="org_type" required>
-            <option value="">Select one…</option>
-            <option value="501c3">501(c)(3) nonprofit</option>
-            <option value="501c4">501(c)(4) social welfare</option>
-            <option value="for-profit">For-profit (LLC, C-corp, S-corp)</option>
-            <option value="b-corp">Benefit corporation / B Corp</option>
-            <option value="cooperative">Cooperative</option>
-            <option value="public">Government / public entity</option>
-            <option value="individual">Individual / sole proprietor</option>
-            <option value="fiscally-sponsored">Fiscally sponsored project</option>
-            <option value="other">Other</option>
+            <option value="501c3" selected>501(c)(3) nonprofit</option>
           </select>
+          <span class="field__hint">The Community Futures Challenge is open to registered 501(c)(3) nonprofits only.</span>
         </label>
         <label class="field">
-          <span class="field__label">Do you have a registered business entity? (optional)</span>
-          <select name="org_has_entity">
-            <option value="">Select one…</option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-          </select>
+          <span class="field__label">Employer Identification Number (EIN) <span class="req">*</span></span>
+          <input type="text" name="org_ein" required maxlength="10" pattern="\d{2}-\d{7}" inputmode="numeric" autocomplete="off" placeholder="12-3456789" />
+          <span class="field__hint">Your organization's 501(c)(3) EIN, formatted XX-XXXXXXX.</span>
         </label>
       </div>
 
@@ -494,6 +491,6 @@
 </footer>
 
 <script src="/script.js?v=8" defer></script>
-<script src="/apply/script.js?v=10" defer></script>
+<script src="/apply/script.js?v=11" defer></script>
 </body>
 </html>

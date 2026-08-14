@@ -39,7 +39,7 @@
   var savedBadge = document.getElementById('apply-saved');
   var successPanel = document.getElementById('apply-success');
 
-  var ELIG_FIELDS = ['elig_age','elig_audience','elig_phase','elig_scope','elig_coi'];
+  var ELIG_FIELDS = ['elig_age','elig_audience','elig_phase','elig_scope','elig_coi','elig_nonprofit'];
 
   var current = 1;
   var farthestSeen = 1;
@@ -165,6 +165,15 @@
       scheduleSave();
     });
   });
+
+  // ---------- EIN auto-format (##-#######) ----------
+  var einEl = form.elements.org_ein;
+  if (einEl) {
+    einEl.addEventListener('input', function () {
+      var digits = einEl.value.replace(/\D/g, '').slice(0, 9);
+      einEl.value = digits.length > 2 ? digits.slice(0, 2) + '-' + digits.slice(2) : digits;
+    });
+  }
 
   // ---------- Character counters ----------
   Array.from(form.querySelectorAll('[data-counter]')).forEach(function (ta) {
@@ -381,7 +390,7 @@
       ['Organization', 'org_name'],
       ['Website', 'org_url'],
       ['Tax status', 'org_type'],
-      ['Registered business entity', 'org_has_entity'],
+      ['EIN', 'org_ein'],
       ['Team', 'team_desc'],
     ]},
     { step: 3, title: 'Project', rows: [
@@ -488,6 +497,7 @@
       elig_phase: radio('elig_phase'),
       elig_scope: radio('elig_scope'),
       elig_coi: radio('elig_coi'),
+      elig_nonprofit: radio('elig_nonprofit'),
 
       lead_name: txt('lead_name'),
       lead_role: txt('lead_role'),
@@ -496,7 +506,7 @@
       org_name: txt('org_name'),
       org_url: txt('org_url'),
       org_type: txt('org_type'),
-      org_has_entity: txt('org_has_entity'),
+      org_ein: txt('org_ein'),
       team_desc: txt('team_desc'),
 
       proj_title: txt('proj_title'),

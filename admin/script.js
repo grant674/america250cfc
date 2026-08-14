@@ -351,7 +351,7 @@
           row('Name', r.org_name),
           row('Website', r.org_url, { link: true }),
           row('Type', r.org_type),
-          row('Registered entity', r.org_has_entity),
+          row('EIN', r.org_ein),
           row('Team', r.team_desc),
         '</dl>',
       '</section>',
@@ -391,6 +391,7 @@
           row('Phase OK', r.elig_phase),
           row('Not lobbying / partisan / cash aid', r.elig_scope),
           row('No COI with partners', r.elig_coi),
+          row('Registered 501(c)(3) nonprofit', r.elig_nonprofit),
         '</dl>',
       '</section>',
 
