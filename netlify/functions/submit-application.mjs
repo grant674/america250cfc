@@ -22,9 +22,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // Applicant-fillable columns only. status is forced; ai_screening_*,
 // created_at, updated_at are intentionally absent (server/DB owns them).
 const TEXT_FIELDS = [
-  "elig_age", "elig_audience", "elig_phase", "elig_scope", "elig_coi",
+  "elig_age", "elig_audience", "elig_phase", "elig_scope", "elig_coi", "elig_nonprofit",
   "lead_name", "lead_role", "lead_email",
-  "org_name", "org_url", "org_type", "org_has_entity", "team_desc",
+  "org_name", "org_url", "org_type", "org_ein", "team_desc",
   "proj_title", "proj_summary", "proj_category", "proj_phase",
   "proj_city", "proj_state", "proj_communities",
   "proj_use_of_funds", "proj_video_url",

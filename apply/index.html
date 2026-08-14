@@ -206,12 +206,16 @@
           </select>
         </label>
         <label class="field">
-          <span class="field__label">Do you have a registered business entity? (optional)</span>
-          <select name="org_has_entity">
+          <span class="field__label">Registered 501(c)(3) nonprofit? (optional)</span>
+          <select name="elig_nonprofit">
             <option value="">Select one…</option>
             <option value="yes">Yes</option>
             <option value="no">No</option>
           </select>
+        </label>
+        <label class="field">
+          <span class="field__label">EIN (optional)</span>
+          <input type="text" name="org_ein" maxlength="10" placeholder="12-3456789" inputmode="numeric" autocomplete="off" />
         </label>
       </div>
 

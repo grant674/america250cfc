@@ -381,7 +381,8 @@
       ['Organization', 'org_name'],
       ['Website', 'org_url'],
       ['Tax status', 'org_type'],
-      ['Registered business entity', 'org_has_entity'],
+      ['Registered nonprofit', 'elig_nonprofit'],
+      ['EIN', 'org_ein'],
       ['Team', 'team_desc'],
     ]},
     { step: 3, title: 'Project', rows: [
@@ -488,6 +489,7 @@
       elig_phase: radio('elig_phase'),
       elig_scope: radio('elig_scope'),
       elig_coi: radio('elig_coi'),
+      elig_nonprofit: txt('elig_nonprofit'),
 
       lead_name: txt('lead_name'),
       lead_role: txt('lead_role'),
@@ -496,7 +498,7 @@
       org_name: txt('org_name'),
       org_url: txt('org_url'),
       org_type: txt('org_type'),
-      org_has_entity: txt('org_has_entity'),
+      org_ein: txt('org_ein'),
       team_desc: txt('team_desc'),
 
       proj_title: txt('proj_title'),
