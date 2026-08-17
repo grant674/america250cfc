@@ -837,13 +837,9 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
   width: auto;
   height: auto;
   object-fit: contain;
-  filter: grayscale(1);
-  opacity: 0.72;
-  transition: filter 220ms var(--ease), opacity 220ms var(--ease), transform 220ms var(--ease);
+  transition: transform 220ms var(--ease);
 }
 .partner-wall li:hover img {
-  filter: grayscale(0);
-  opacity: 1;
   transform: scale(1.04);
 }
 
