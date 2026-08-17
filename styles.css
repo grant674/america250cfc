@@ -1551,11 +1551,11 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
 /* Chair card: same height as a panel card (no extra rows to stretch
    against), but twice the width — sized as a double span on the same
    6-column track the panel below it uses, so "twice as wide" stays true
-   at every breakpoint instead of a fixed pixel guess. */
-.judges-grid--chair {
-  justify-content: center;
-}
-.judges-grid.judges-grid--chair > .judge-card { grid-column: span 4; }
+   at every breakpoint instead of a fixed pixel guess. Explicit start at
+   column line 2 (matching Ted Yang's centered-pair start below) rather
+   than relying on justify-content, which is a no-op here since the 1fr
+   tracks already fill the row and leave no slack to distribute. */
+.judges-grid.judges-grid--chair > .judge-card { grid-column: 2 / span 4; }
 .judge-card {
   background: var(--c-gray);
   border-radius: var(--radius-md);
