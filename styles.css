@@ -696,7 +696,6 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
   margin-top: 6px;
   max-width: 540px;
 }
-.tour-row__note strong { color: var(--c-white); font-weight: 700; }
 .tour-row__date {
   font-family: var(--font);
   font-weight: 700;
