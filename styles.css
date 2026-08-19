@@ -691,10 +691,12 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
   font-family: var(--font);
   font-weight: 400;
   font-size: 14px;
+  line-height: 1.55;
   color: rgba(255, 255, 255, 0.78);
   margin-top: 6px;
   max-width: 540px;
 }
+.tour-row__note strong { color: var(--c-white); font-weight: 700; }
 .tour-row__date {
   font-family: var(--font);
   font-weight: 700;
