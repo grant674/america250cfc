@@ -181,28 +181,20 @@ function extractEmail(payload) {
 // Best-effort: on any failure we log and fall back to storing the email
 // with an empty body rather than dropping the row or retrying the webhook.
 async function fetchInboundBody(emailId) {
-  // TEMP DEBUG (2026-08-26): the fetch below has been silently failing in
-  // production. Returning `debug` alongside the body so the caller can
-  // stash it in raw_payload — no way to read Netlify function logs from
-  // this session, so this is the fastest path to seeing the real failure
-  // reason. Remove once diagnosed.
-  if (!RESEND_API_KEY) return { text: "", html: "", debug: { skipped: "no_api_key" } };
-  if (!emailId) return { text: "", html: "", debug: { skipped: "no_email_id" } };
-  const url = `https://api.resend.com/emails/inbound/${encodeURIComponent(emailId)}`;
+  if (!RESEND_API_KEY || !emailId) return { text: "", html: "" };
   try {
-    const res = await fetch(url, {
+    const res = await fetch(`https://api.resend.com/emails/inbound/${encodeURIComponent(emailId)}`, {
       headers: { Authorization: `Bearer ${RESEND_API_KEY}` },
     });
     if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      console.error("Resend inbound fetch failed:", res.status, errText);
-      return { text: "", html: "", debug: { url, status: res.status, errText } };
+      console.error("Resend inbound fetch failed:", res.status, await res.text().catch(() => ""));
+      return { text: "", html: "" };
     }
     const data = await res.json();
-    return { text: data.text || "", html: data.html || "", debug: { url, status: res.status, keys: Object.keys(data) } };
+    return { text: data.text || "", html: data.html || "" };
   } catch (err) {
     console.error("Resend inbound fetch error:", err);
-    return { text: "", html: "", debug: { url, error: String(err) } };
+    return { text: "", html: "" };
   }
 }
 
@@ -241,13 +233,11 @@ export const handler = async (event) => {
   // The webhook envelope carries no body — fetch it from Resend if the
   // envelope didn't already have one inlined (defensive, in case that
   // ever changes).
-  let fetchDebug = null;
   if (!email.text_body && !email.html_body && email.resend_email_id) {
     const body = await fetchInboundBody(email.resend_email_id);
     email.text_body = body.text;
     email.html_body = body.html;
     email.snippet = (body.text || body.html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").slice(0, 140).trim();
-    fetchDebug = body.debug;
   }
 
   // ----- Insert (or upsert by message_id) -----
@@ -265,10 +255,7 @@ export const handler = async (event) => {
     email_refs: email.email_refs,
     headers: email.headers,
     attachments: email.attachments,
-    // TEMP DEBUG (2026-08-26): _debug_fetch is not part of the real
-    // webhook payload — appended here so we can see why the body fetch
-    // failed without Netlify log access. Remove once diagnosed.
-    raw_payload: fetchDebug ? { ...payload, _debug_fetch: fetchDebug } : payload,
+    raw_payload: payload,
     status: "unread",
   };
 
