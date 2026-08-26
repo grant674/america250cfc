@@ -198,13 +198,14 @@
           <span class="field__label">Website</span>
           <input type="url" name="org_url" maxlength="300" placeholder="organization.org" inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false" />
         </label>
-        <label class="field">
-          <span class="field__label">Tax status</span>
-          <select name="org_type" required>
-            <option value="501c3" selected>501(c)(3) nonprofit</option>
-          </select>
+        <div class="field">
+          <span class="field__label">Confirm Registered 501(c)3 Organization? <span class="req">*</span></span>
+          <label class="checkbox">
+            <input type="checkbox" name="org_type" value="501c3" required />
+            <span>Yes</span>
+          </label>
           <span class="field__hint">The Community Futures Challenge is open to registered 501(c)(3) nonprofits only.</span>
-        </label>
+        </div>
         <label class="field">
           <span class="field__label">Employer Identification Number (EIN) <span class="req">*</span></span>
           <input type="text" name="org_ein" required maxlength="10" pattern="\d{2}-\d{7}" inputmode="numeric" autocomplete="off" placeholder="12-3456789" />
