@@ -5,7 +5,10 @@
 // signature headers. We:
 //   1. Verify the Svix signature (HMAC-SHA256) using
 //      RESEND_INBOUND_SIGNING_SECRET so spoofed POSTs are rejected.
-//   2. Parse the email envelope (to/from/subject/html/text/etc).
+//   2. Parse the email envelope (to/from/subject/etc). The webhook body
+//      itself carries no text/html — it's a notification only — so when
+//      the envelope has no inline body we fetch the full parsed email
+//      from Resend's API using the envelope's email_id.
 //   3. Dedupe by message_id (Svix retries until 2xx).
 //   4. Insert into public.inbound_emails via service_role.
 // ============================================================
@@ -15,6 +18,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 const SUPABASE_URL = "https://emhcsinxtxshdgiceofa.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const RESEND_INBOUND_SIGNING_SECRET = process.env.RESEND_INBOUND_SIGNING_SECRET;
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const ALLOWED_DOMAIN = "america250cfc.org";
 const ALLOWED_ALIASES = new Set([
   "hello", "apply", "press", "partnerships",
@@ -100,9 +104,21 @@ function extractEmail(payload) {
   let fromAddress = "";
   let fromName = null;
   if (typeof fromRaw === "string") {
-    const m = fromRaw.match(/^\s*(?:"?([^"<>]*?)"?\s*)?<?([^<>\s]+@[^<>\s]+)>?\s*$/);
-    if (m) { fromName = m[1] || null; fromAddress = m[2]; }
-    else fromAddress = fromRaw;
+    const trimmed = fromRaw.trim();
+    // Only treat this as "Name <addr>" when a genuine <...> is present —
+    // trying to infer a name from a bare address (the common case) via a
+    // single do-it-all regex is what caused the previous parser to chop
+    // the first character off bare addresses (e.g. "grant@x.com" -> name
+    // "g", address "rant@x.com"). Bare addresses now skip name-parsing
+    // entirely.
+    const angleMatch = trimmed.match(/^(?:"([^"]*)"|([^<]*?))\s*<([^<>\s]+@[^<>\s]+)>$/);
+    if (angleMatch) {
+      const name = (angleMatch[1] || angleMatch[2] || "").trim();
+      fromName = name || null;
+      fromAddress = angleMatch[3];
+    } else {
+      fromAddress = trimmed;
+    }
   } else if (fromRaw && typeof fromRaw === "object") {
     fromAddress = fromRaw.address || fromRaw.email || "";
     fromName = fromRaw.name || null;
@@ -121,7 +137,11 @@ function extractEmail(payload) {
   } else if (typeof headers === "object") {
     for (const k of Object.keys(headers)) hdrMap[k.toLowerCase()] = headers[k];
   }
+  // Resend's own message_id (RFC822 Message-ID header) is separate from
+  // its internal email_id — the latter is what the "fetch full email" API
+  // call below needs, since the webhook notification carries no body.
   const messageId = data.message_id || data.messageId || hdrMap["message-id"] || null;
+  const resendEmailId = data.email_id || data.id || null;
   const inReplyTo = data.in_reply_to || hdrMap["in-reply-to"] || null;
   const refs = data.references || hdrMap["references"] || null;
 
@@ -150,9 +170,32 @@ function extractEmail(payload) {
     headers: hdrMap,
     attachments,
     message_id: messageId,
+    resend_email_id: resendEmailId,
     in_reply_to: inReplyTo,
     email_refs: refs,
   };
+}
+
+// The email.received webhook is a notification only — no text/html. Fetch
+// the full parsed email from Resend's API using its internal email_id.
+// Best-effort: on any failure we log and fall back to storing the email
+// with an empty body rather than dropping the row or retrying the webhook.
+async function fetchInboundBody(emailId) {
+  if (!RESEND_API_KEY || !emailId) return { text: "", html: "" };
+  try {
+    const res = await fetch(`https://api.resend.com/emails/inbound/${encodeURIComponent(emailId)}`, {
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}` },
+    });
+    if (!res.ok) {
+      console.error("Resend inbound fetch failed:", res.status, await res.text().catch(() => ""));
+      return { text: "", html: "" };
+    }
+    const data = await res.json();
+    return { text: data.text || "", html: data.html || "" };
+  } catch (err) {
+    console.error("Resend inbound fetch error:", err);
+    return { text: "", html: "" };
+  }
 }
 
 export const handler = async (event) => {
@@ -185,6 +228,16 @@ export const handler = async (event) => {
   if (!ALLOWED_ALIASES.has(email.to_alias)) {
     console.warn("Inbound dropped (unknown alias):", email.to_alias);
     return jsonResponse(200, { ok: true, dropped: "unknown_alias" });
+  }
+
+  // The webhook envelope carries no body — fetch it from Resend if the
+  // envelope didn't already have one inlined (defensive, in case that
+  // ever changes).
+  if (!email.text_body && !email.html_body && email.resend_email_id) {
+    const body = await fetchInboundBody(email.resend_email_id);
+    email.text_body = body.text;
+    email.html_body = body.html;
+    email.snippet = (body.text || body.html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").slice(0, 140).trim();
   }
 
   // ----- Insert (or upsert by message_id) -----
