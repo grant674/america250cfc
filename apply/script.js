@@ -577,6 +577,7 @@
       form.hidden = true;
       document.querySelector('.apply-progress').hidden = true;
       document.querySelector('.apply-header').hidden = true;
+      document.querySelector('.apply-jit').hidden = true;
       if (successPanel) successPanel.hidden = false;
       try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
       return;
@@ -683,6 +684,7 @@
     form.hidden = true;
     document.querySelector('.apply-progress').hidden = true;
     document.querySelector('.apply-header').hidden = true;
+    document.querySelector('.apply-jit').hidden = true;
     if (successPanel) successPanel.hidden = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
