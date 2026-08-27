@@ -825,10 +825,20 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
 }
 .partner-wall li {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   min-height: 140px;
   padding: 16px;
+}
+.partner-wall__caption {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-65);
 }
 .partner-wall img {
   display: block;
@@ -1680,6 +1690,17 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
 @media (max-width: 340px) {
   .partner-wall--compact { grid-template-columns: 1fr; }
 }
+
+/* Stacked variant — ASU sits below PMI (with its judging-partner
+   caption) instead of side by side, at every width. Declared after
+   the --compact responsive overrides above so it wins the equal-
+   specificity tie inside their media queries too, without needing
+   its own @media blocks. */
+.partner-wall--stacked {
+  grid-template-columns: minmax(0, 280px);
+  gap: 8px;
+}
+.partner-wall--stacked li { min-height: auto; padding: 12px; }
 
 @media (prefers-reduced-motion: reduce) {
   .reveal,
