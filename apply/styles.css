@@ -401,7 +401,11 @@
   width: 14px;
   text-align: left;
 }
-.field__money input { padding-left: 36px; }
+/* Higher specificity than .apply-form .field input (0,2,1) is required —
+   a bare .field__money input rule (0,1,1) silently loses that tie and the
+   $ glyph ends up sharing the input's default 14px padding-left, landing
+   directly on top of the first digit. */
+.apply-form .field .field__money input { padding-left: 36px; }
 
 .req {
   color: var(--c-red);
