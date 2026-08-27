@@ -152,8 +152,10 @@ function extractJson(text) {
 }
 
 // ---------- Confirmation email ----------
-// Sent only for applications that pass AI screening or get flagged for human
-// review. Rejected/spam submissions don't get a thank-you email.
+// Sent for every application regardless of AI screening verdict (pass, flag,
+// or reject) so the submitter always gets a record of what they sent — see
+// the send-gate comment below for why, and the mitigation for the resulting
+// spoofing/harassment risk from an attacker-controlled lead_email.
 function escHtml(s) {
   return String(s == null ? "" : s)
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -305,7 +307,7 @@ ${renderRecapHtml(buildRecapSections(row))}
       <p class="signoff">— The America250 CFC team</p>
     </div>
     <div class="footer">
-      A program of PMI U.S. &nbsp;·&nbsp; <a href="https://america250cfc.org">america250cfc.org</a>${unsubUrl ? `<br />You're receiving this because you submitted an application. <a href="${unsubUrl}">Unsubscribe from program updates</a>.` : ""}
+      A program of PMI U.S. &nbsp;·&nbsp; <a href="https://america250cfc.org">america250cfc.org</a>${unsubUrl ? `<br />You're receiving this because this address was entered on an application. Didn't submit this, or think you got it by mistake? <a href="${unsubUrl}">Unsubscribe</a> or write <a href="mailto:privacy@america250cfc.org">privacy@america250cfc.org</a>.` : ""}
     </div>
   </div>
 </body></html>`;
@@ -333,7 +335,13 @@ function buildEmailText({ leadFirst, applicationId, projectTitle, unsubUrl, row 
     "— The America250 CFC team",
     "A program of PMI U.S.",
     "https://america250cfc.org",
-    ...(unsubUrl ? ["", "You're receiving this because you submitted an application.", "Unsubscribe from program updates: " + unsubUrl] : []),
+    ...(unsubUrl ? [
+      "",
+      "You're receiving this because this address was entered on an application.",
+      "Didn't submit this, or think you got it by mistake?",
+      "Unsubscribe: " + unsubUrl,
+      "Or write: privacy@america250cfc.org",
+    ] : []),
   ].join("\n");
 }
 
@@ -535,21 +543,22 @@ export const handler = async (event) => {
     return { statusCode: 500, body: "Update failed" };
   }
 
-  // Send a confirmation email — but only for plausibly-real submissions.
-  // Rejected (spam/test) submissions don't get a "thanks for applying" email.
-  // Email failure is non-blocking — we still return 200 to Supabase so the
-  // webhook isn't retried (which would re-screen and re-update unnecessarily).
-  // Only email plausibly-real submissions, AND only to a strictly-valid
-  // address. row.lead_email is attacker-controlled (anon insert), so without
-  // strict validation this branded, domain-aligned email could be aimed at an
-  // arbitrary victim — turning the screening pipeline into a phishing/abuse
-  // relay off the org's verified sending reputation.
+  // Send a confirmation email regardless of the AI screening verdict —
+  // including reject — so the sender always gets a record of what they
+  // submitted. Email failure is non-blocking — we still return 200 to
+  // Supabase so the webhook isn't retried (which would re-screen and
+  // re-update unnecessarily).
+  // row.lead_email is attacker-controlled (anon insert) and unverified, so
+  // sending unconditionally means anyone who types a third party's address
+  // into the form causes that address to receive this branded email — the
+  // "received this in error?" unsubscribe note in the template is the
+  // mitigation for that, not a full fix. Still only sent to a
+  // strictly-valid address.
   // An admin re-screen replays the row with suppressEmail=true so the applicant
   // isn't sent a fresh "we received your submission" email on every re-screen.
   const suppressEmail = payload.suppressEmail === true;
   let emailResult = { skipped: suppressEmail ? "suppressed" : "not-attempted" };
   if (!suppressEmail &&
-      (overall === "pass" || overall === "flag") &&
       typeof row.lead_email === "string" && EMAIL_RE.test(row.lead_email)) {
     emailResult = await sendConfirmationEmail({
       to: row.lead_email,
