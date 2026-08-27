@@ -832,13 +832,25 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
   min-height: 140px;
   padding: 16px;
 }
+/* Mirrors .partners__h ("In partnership with") — same type treatment
+   and the same small red rule beneath it. */
 .partner-wall__caption {
+  display: block;
   font-family: var(--font);
   font-weight: 700;
   font-size: 11px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
+  text-align: center;
   color: var(--fg-65);
+}
+.partner-wall__caption::after {
+  content: "";
+  display: block;
+  width: 48px;
+  height: 2px;
+  background: var(--c-red);
+  margin: 12px auto 0;
 }
 .partner-wall img {
   display: block;
