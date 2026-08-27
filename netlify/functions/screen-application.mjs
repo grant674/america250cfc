@@ -167,7 +167,84 @@ function firstName(fullName) {
   return trimmed.split(/\s+/)[0];
 }
 
-function buildEmailHtml({ leadFirst, applicationId, projectTitle, unsubUrl }) {
+function fmtMoney(n) {
+  if (n == null || n === "" || !Number.isFinite(Number(n))) return null;
+  return "$" + Number(n).toLocaleString("en-US");
+}
+
+// Groups the applicant's own submitted answers for the "your submission"
+// recap — skips any field they left blank rather than printing an empty
+// row. Shared between the HTML and plain-text renderers so the two never
+// drift out of sync with each other.
+function buildRecapSections(row) {
+  const has = (k) => row[k] != null && row[k] !== "";
+  const sections = [];
+
+  const about = [];
+  if (has("lead_name")) about.push(["Lead applicant", row.lead_name]);
+  if (has("lead_role")) about.push(["Role", row.lead_role]);
+  if (has("lead_email")) about.push(["Email", row.lead_email]);
+  if (has("org_name")) about.push(["Organization", row.org_name]);
+  if (has("org_url")) about.push(["Website", row.org_url]);
+  if (has("org_ein")) about.push(["EIN", row.org_ein]);
+  if (has("team_desc")) about.push(["Team", row.team_desc]);
+  if (about.length) sections.push(["About you & your team", about]);
+
+  const project = [];
+  if (has("proj_title")) project.push(["Title", row.proj_title]);
+  if (has("proj_category")) project.push(["Category", row.proj_category]);
+  if (has("proj_phase")) project.push(["Phase", row.proj_phase]);
+  const location = [row.proj_city, row.proj_state].filter(Boolean).join(", ");
+  if (location) project.push(["Location", location]);
+  if (has("proj_communities")) project.push(["Communities served", row.proj_communities]);
+  if (has("proj_summary")) project.push(["Summary", row.proj_summary]);
+  const budgetTotal = fmtMoney(row.proj_budget_total);
+  if (budgetTotal) project.push(["Total project budget", budgetTotal]);
+  const budgetRaised = fmtMoney(row.proj_budget_raised);
+  if (budgetRaised) project.push(["Already raised", budgetRaised]);
+  if (has("proj_use_of_funds")) project.push(["Use of funds", row.proj_use_of_funds]);
+  if (has("proj_video_url")) project.push(["Video", row.proj_video_url]);
+  if (project.length) sections.push(["Project", project]);
+
+  const impact = [];
+  if (has("impact_community")) impact.push(["Community impact", row.impact_community]);
+  if (has("impact_feasibility")) impact.push(["Feasibility", row.impact_feasibility]);
+  if (has("impact_innovation")) impact.push(["Innovation", row.impact_innovation]);
+  if (has("impact_sustainability")) impact.push(["Sustainability", row.impact_sustainability]);
+  if (has("impact_founder_team")) impact.push(["Founder & team", row.impact_founder_team]);
+  if (impact.length) sections.push(["Impact narrative", impact]);
+
+  return sections;
+}
+
+function renderRecapHtml(sections) {
+  if (!sections.length) return "";
+  return `
+      <div class="recap">
+        <h3>Your submission</h3>${sections.map(([heading, fields]) => `
+        <div class="recap-group">
+          <div class="recap-group__h">${escHtml(heading)}</div>${fields.map(([label, value]) => `
+          <div class="recap-row">
+            <div class="recap-label">${escHtml(label)}</div>
+            <div class="recap-value">${escHtml(value).replace(/\n/g, "<br>")}</div>
+          </div>`).join("")}
+        </div>`).join("")}
+      </div>`;
+}
+
+function renderRecapText(sections) {
+  if (!sections.length) return "";
+  return [
+    "YOUR SUBMISSION",
+    "",
+    sections.map(([heading, fields]) => {
+      const lines = fields.map(([label, value]) => `  ${label}: ${value}`);
+      return [heading.toUpperCase(), ...lines].join("\n");
+    }).join("\n\n"),
+  ].join("\n");
+}
+
+function buildEmailHtml({ leadFirst, applicationId, projectTitle, unsubUrl, row }) {
   const greeting = leadFirst ? `Hi ${escHtml(leadFirst)},` : "Hi,";
   // Email clients rarely load custom web fonts. We declare Lato first so it
   // renders correctly in clients that do (Apple Mail), and fall through to
@@ -190,6 +267,15 @@ function buildEmailHtml({ leadFirst, applicationId, projectTitle, unsubUrl }) {
   .next ul { margin: 0; padding: 0; list-style: none; }
   .next li { margin-bottom: 8px; padding-left: 14px; position: relative; font-size: 14px; color: #000000; line-height: 1.5; }
   .next li::before { content: "—"; position: absolute; left: 0; color: #8C1D40; font-weight: 700; }
+  .recap { margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(0,0,0,0.07); }
+  .recap h3 { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(0,0,0,0.6); margin: 0 0 16px; font-weight: 700; }
+  .recap-group { margin-bottom: 20px; }
+  .recap-group:last-child { margin-bottom: 0; }
+  .recap-group__h { font-size: 12px; font-weight: 700; color: #1B459B; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+  .recap-row { margin-bottom: 10px; }
+  .recap-row:last-child { margin-bottom: 0; }
+  .recap-label { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(0,0,0,0.55); font-weight: 700; margin-bottom: 2px; }
+  .recap-value { font-size: 14px; line-height: 1.5; color: #000000; word-break: break-word; }
   .signoff { margin: 0; }
   .footer { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(0,0,0,0.6); text-align: center; margin-top: 24px; line-height: 1.5; }
   .footer a { color: rgba(0,0,0,0.6); text-decoration: none; }
@@ -205,7 +291,7 @@ function buildEmailHtml({ leadFirst, applicationId, projectTitle, unsubUrl }) {
 
       <div class="label">Your reference ID</div>
       <div class="ref">${escHtml(applicationId)}</div>
-
+${renderRecapHtml(buildRecapSections(row))}
       <div class="next">
         <h3>What happens next</h3>
         <ul>
@@ -225,8 +311,9 @@ function buildEmailHtml({ leadFirst, applicationId, projectTitle, unsubUrl }) {
 </body></html>`;
 }
 
-function buildEmailText({ leadFirst, applicationId, projectTitle, unsubUrl }) {
+function buildEmailText({ leadFirst, applicationId, projectTitle, unsubUrl, row }) {
   const greeting = leadFirst ? `Hi ${leadFirst},` : "Hi,";
+  const recap = renderRecapText(buildRecapSections(row));
   return [
     greeting,
     "",
@@ -235,6 +322,7 @@ function buildEmailText({ leadFirst, applicationId, projectTitle, unsubUrl }) {
     "YOUR REFERENCE ID",
     applicationId,
     "",
+    ...(recap ? [recap, ""] : []),
     "WHAT HAPPENS NEXT",
     "  — Independent panel review by a panel of nationally acclaimed leaders, through January 2027.",
     "  — Five winners announced at a dedicated event in Phoenix, February 2027.",
@@ -249,7 +337,7 @@ function buildEmailText({ leadFirst, applicationId, projectTitle, unsubUrl }) {
   ].join("\n");
 }
 
-async function sendConfirmationEmail({ to, leadFirst, applicationId, projectTitle }) {
+async function sendConfirmationEmail({ to, leadFirst, applicationId, projectTitle, row }) {
   if (!RESEND_API_KEY) {
     console.log("RESEND_API_KEY not set — skipping confirmation email");
     return { skipped: "no_api_key" };
@@ -271,8 +359,8 @@ async function sendConfirmationEmail({ to, leadFirst, applicationId, projectTitl
         to: [to],
         reply_to: EMAIL_REPLY_TO,
         subject: `Your America250 CFC application is in — ${applicationId.slice(0, 8)}`,
-        html: buildEmailHtml({ leadFirst, applicationId, projectTitle, unsubUrl }),
-        text: buildEmailText({ leadFirst, applicationId, projectTitle, unsubUrl }),
+        html: buildEmailHtml({ leadFirst, applicationId, projectTitle, unsubUrl, row }),
+        text: buildEmailText({ leadFirst, applicationId, projectTitle, unsubUrl, row }),
         // RFC 8058 one-click unsubscribe (Gmail/Yahoo bulk-sender standard).
         headers: unsubUrl ? {
           "List-Unsubscribe": `<${unsubUrl}>, <mailto:privacy@america250cfc.org?subject=unsubscribe>`,
@@ -468,6 +556,7 @@ export const handler = async (event) => {
       leadFirst: firstName(row.lead_name),
       applicationId: appId,
       projectTitle: row.proj_title,
+      row,
     });
   }
 
