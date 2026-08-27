@@ -828,7 +828,10 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  /* Matches .partner-wall's own margin-top below — same visual gap from
+     "Official Judging Partner" to the ASU logo as from "In partnership
+     with" to the PMI logo. */
+  gap: 32px;
   min-height: 140px;
   padding: 16px;
 }
@@ -864,11 +867,19 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
 .partner-wall li:hover img {
   transform: scale(1.04);
 }
+/* ASU logo — ~30% larger than the standard partner-wall size. Compound
+   selector needed: .partner-wall img (class+element) outranks a bare
+   single-class rule on specificity, so a plain .partner-wall__logo--lg
+   rule would silently lose to the 88px rule above regardless of order. */
+.partner-wall img.partner-wall__logo--lg {
+  max-height: 114px;
+}
 
 @media (max-width: 720px) {
   .partner-wall { grid-template-columns: repeat(2, 1fr); gap: 14px; }
   .partner-wall li { min-height: 100px; }
   .partner-wall img { max-height: 56px; }
+  .partner-wall img.partner-wall__logo--lg { max-height: 73px; }
 }
 @media (max-width: 340px) {
   .partner-wall { grid-template-columns: 1fr; }
@@ -1710,7 +1721,7 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
    its own @media blocks. */
 .partner-wall--stacked {
   grid-template-columns: minmax(0, 280px);
-  gap: 8px;
+  gap: 12px; /* 8px + 50% */
 }
 .partner-wall--stacked li { min-height: auto; padding: 12px; }
 
