@@ -894,6 +894,42 @@
     });
   }
 
+  // Resend the original submission-confirmation email. Doesn't touch
+  // ai_screening_* or status — just re-sends the same recap the applicant
+  // got at submission time. Useful when they say they never received it.
+  var btnResendConfirmation = document.getElementById('btn-resend-confirmation');
+  var resendConfirmationMsg = document.getElementById('resend-confirmation-msg');
+  if (btnResendConfirmation) {
+    btnResendConfirmation.addEventListener('click', async function () {
+      if (!state.activeRow) return;
+      btnResendConfirmation.disabled = true;
+      var orig = btnResendConfirmation.textContent;
+      btnResendConfirmation.textContent = 'Sending…';
+      if (resendConfirmationMsg) { resendConfirmationMsg.textContent = ''; resendConfirmationMsg.className = 'rescreen-msg'; }
+      try {
+        var res = await fetch('/.netlify/functions/admin-resend-confirmation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ id: state.activeRow.id })
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (res.status === 422) {
+          if (resendConfirmationMsg) { resendConfirmationMsg.textContent = 'No valid applicant email on file.'; resendConfirmationMsg.className = 'rescreen-msg is-warn'; }
+        } else if (!res.ok) {
+          throw new Error(data.error || ('HTTP ' + res.status));
+        } else if (resendConfirmationMsg) {
+          resendConfirmationMsg.textContent = 'Sent to ' + (data.sent_to || 'applicant') + '.'; resendConfirmationMsg.className = 'rescreen-msg is-ok';
+        }
+      } catch (err) {
+        if (resendConfirmationMsg) { resendConfirmationMsg.textContent = 'Send failed. Try again.'; resendConfirmationMsg.className = 'rescreen-msg is-err'; }
+      } finally {
+        btnResendConfirmation.disabled = false;
+        btnResendConfirmation.textContent = orig;
+      }
+    });
+  }
+
   // Finalist / winner notification emails (#7). The function only sends when
   // the application's status already matches (mark status first), so this
   // can't email a "winner" notice to someone who isn't one.

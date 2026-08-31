@@ -162,7 +162,7 @@ function escHtml(s) {
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
-function firstName(fullName) {
+export function firstName(fullName) {
   if (!fullName || typeof fullName !== "string") return null;
   const trimmed = fullName.trim();
   if (!trimmed) return null;
@@ -345,7 +345,7 @@ function buildEmailText({ leadFirst, applicationId, projectTitle, unsubUrl, row 
   ].join("\n");
 }
 
-async function sendConfirmationEmail({ to, leadFirst, applicationId, projectTitle, row }) {
+export async function sendConfirmationEmail({ to, leadFirst, applicationId, projectTitle, row }) {
   if (!RESEND_API_KEY) {
     console.log("RESEND_API_KEY not set — skipping confirmation email");
     return { skipped: "no_api_key" };
