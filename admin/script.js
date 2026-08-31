@@ -930,6 +930,82 @@
     });
   }
 
+  // Message applicant directly. Sends a fresh email (not tied to any inbound
+  // thread) to the applicant's lead_email from hello@, Reply-To apply@ — a
+  // reply lands in the existing inbox under the "apply" alias like any other
+  // inbound thread.
+  var messageModal = document.getElementById('message-modal');
+  var messageForm = document.getElementById('message-form');
+  var messageSubmit = document.getElementById('message-submit');
+  var messageMsg = document.getElementById('message-msg');
+
+  function openMessageModal() {
+    if (!state.activeRow) return;
+    var row = state.activeRow;
+    document.getElementById('message-context').textContent =
+      'To ' + (row.lead_name || 'applicant') + ' <' + (row.lead_email || '—') + '>';
+    document.getElementById('message-subject').value =
+      'Your America250 CFC application' + (row.proj_title ? ' — ' + row.proj_title : '');
+    document.getElementById('message-text').value = '';
+    messageMsg.textContent = '';
+    messageMsg.className = 'invite-msg';
+    messageModal.setAttribute('aria-hidden', 'false');
+    setTimeout(function () { document.getElementById('message-text').focus(); }, 30);
+  }
+  function closeMessageModal() {
+    messageModal.setAttribute('aria-hidden', 'true');
+    messageForm.reset();
+  }
+  var btnMessageApplicant = document.getElementById('btn-message-applicant');
+  if (btnMessageApplicant) btnMessageApplicant.addEventListener('click', openMessageModal);
+  document.querySelectorAll('[data-message-close]').forEach(function (el) {
+    el.addEventListener('click', closeMessageModal);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && messageModal.getAttribute('aria-hidden') === 'false') closeMessageModal();
+  });
+  messageForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    if (!state.activeRow) return;
+    var fd = new FormData(messageForm);
+    var payload = {
+      id: state.activeRow.id,
+      subject: String(fd.get('subject') || '').trim(),
+      text: String(fd.get('text') || '').trim(),
+    };
+    if (!payload.subject || !payload.text) {
+      messageMsg.textContent = 'Subject and message required.';
+      messageMsg.className = 'invite-msg is-err';
+      return;
+    }
+    messageSubmit.disabled = true;
+    messageMsg.textContent = 'Sending…';
+    messageMsg.className = 'invite-msg';
+    try {
+      var res = await fetch('/.netlify/functions/admin-message-applicant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (res.status === 422) {
+        messageMsg.textContent = 'No valid applicant email on file.';
+        messageMsg.className = 'invite-msg is-err';
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+      messageMsg.textContent = 'Sent.';
+      messageMsg.className = 'invite-msg is-ok';
+      setTimeout(closeMessageModal, 800);
+    } catch (err) {
+      messageMsg.textContent = 'Failed: ' + err.message;
+      messageMsg.className = 'invite-msg is-err';
+    } finally {
+      messageSubmit.disabled = false;
+    }
+  });
+
   // Finalist / winner notification emails (#7). The function only sends when
   // the application's status already matches (mark status first), so this
   // can't email a "winner" notice to someone who isn't one.

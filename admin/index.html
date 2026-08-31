@@ -269,6 +269,10 @@ function OptanonWrapper() { }
         <button type="button" class="btn-mini btn-mini--blue" id="btn-resend-confirmation">Resend confirmation email</button>
         <span id="resend-confirmation-msg" class="rescreen-msg" aria-live="polite"></span>
       </div>
+      <span class="drawer__foot-label" style="margin-top:14px;">Contact applicant</span>
+      <div class="drawer__actions">
+        <button type="button" class="btn-mini btn-mini--blue" id="btn-message-applicant">Message applicant</button>
+      </div>
       <span class="drawer__foot-label" style="margin-top:14px;">Notify applicant</span>
       <div class="drawer__actions">
         <button type="button" class="btn-mini btn-mini--accent" id="btn-notify-finalist" data-kind="finalist">Email finalist notice</button>
@@ -332,6 +336,31 @@ function OptanonWrapper() { }
       <div class="invite-form__row">
         <button type="submit" class="invite-submit" id="reply-submit">Send reply</button>
         <span class="invite-msg" id="reply-msg"></span>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============== MESSAGE-APPLICANT COMPOSER MODAL ============== -->
+<div class="reply-modal" id="message-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="message-title">
+  <div class="reply-modal__scrim" data-message-close></div>
+  <div class="reply-modal__panel" role="document">
+    <button type="button" class="invite-modal__close" data-message-close aria-label="Close">×</button>
+    <span class="rule-bar" aria-hidden="true"></span>
+    <h2 id="message-title" class="invite-modal__title">Message applicant</h2>
+    <p class="invite-modal__sub" id="message-context">—</p>
+    <form id="message-form" class="invite-form" novalidate>
+      <label class="invite-label">
+        Subject
+        <input type="text" name="subject" id="message-subject" required maxlength="500" />
+      </label>
+      <label class="invite-label">
+        Message
+        <textarea name="text" id="message-text" rows="8" required maxlength="20000" placeholder="Write your message..."></textarea>
+      </label>
+      <div class="invite-form__row">
+        <button type="submit" class="invite-submit" id="message-submit">Send message</button>
+        <span class="invite-msg" id="message-msg"></span>
       </div>
     </form>
   </div>
