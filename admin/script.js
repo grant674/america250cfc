@@ -1042,6 +1042,40 @@
     });
   });
 
+  // Permanent single-application delete. Irreversible — scores and
+  // attachments cascade-delete with it. Meant for clearing out test/spam
+  // submissions from the drawer without having to use bulk-select.
+  var btnDeleteApplication = document.getElementById('btn-delete-application');
+  var deleteApplicationMsg = document.getElementById('delete-application-msg');
+  if (btnDeleteApplication) {
+    btnDeleteApplication.addEventListener('click', async function () {
+      if (!state.activeRow) return;
+      var row = state.activeRow;
+      var label = row.proj_title || row.lead_name || row.id;
+      if (!window.confirm('Permanently delete "' + label + '"? This cannot be undone.')) return;
+      btnDeleteApplication.disabled = true;
+      var orig = btnDeleteApplication.textContent;
+      btnDeleteApplication.textContent = 'Deleting…';
+      if (deleteApplicationMsg) { deleteApplicationMsg.textContent = ''; deleteApplicationMsg.className = 'rescreen-msg'; }
+      try {
+        var res = await fetch('/.netlify/functions/admin-delete-applications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ ids: [row.id] })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        selectedIds.delete(row.id);
+        closeDrawer();
+        fetchData();
+      } catch (err) {
+        if (deleteApplicationMsg) { deleteApplicationMsg.textContent = 'Delete failed. Try again.'; deleteApplicationMsg.className = 'rescreen-msg is-err'; }
+        btnDeleteApplication.disabled = false;
+        btnDeleteApplication.textContent = orig;
+      }
+    });
+  }
+
   // ---------- Bulk selection + status actions (#10) ----------
   var bulkBar = document.getElementById('bulk-bar');
   var bulkCount = document.getElementById('bulk-count');
@@ -1104,6 +1138,35 @@
       setTimeout(fetchData, 800);
     } catch (err) {
       if (bulkMsg) { bulkMsg.textContent = 'Bulk update failed.'; bulkMsg.className = 'rescreen-msg is-err'; }
+    } finally {
+      btns.forEach(function (b) { b.disabled = false; });
+    }
+  });
+
+  // Permanent bulk delete. Separate from the status-change handler above
+  // (different endpoint, much stronger confirmation) since this can't be
+  // undone — scores and attachments cascade-delete with the application.
+  var bulkDelete = document.getElementById('bulk-delete');
+  if (bulkDelete) bulkDelete.addEventListener('click', async function () {
+    var ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    var confirmMsg = 'Permanently delete ' + ids.length + ' application(s)? This cannot be undone — ' +
+      'their scores and attachments will be deleted too.';
+    if (!window.confirm(confirmMsg)) return;
+    var btns = bulkBar.querySelectorAll('button');
+    btns.forEach(function (b) { b.disabled = true; });
+    if (bulkMsg) { bulkMsg.textContent = 'Deleting ' + ids.length + '…'; bulkMsg.className = 'rescreen-msg'; }
+    try {
+      var res = await fetch('/.netlify/functions/admin-delete-applications', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ ids: ids })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      selectedIds.clear();
+      if (bulkMsg) { bulkMsg.textContent = 'Deleted. Refreshing…'; bulkMsg.className = 'rescreen-msg is-ok'; }
+      setTimeout(fetchData, 800);
+    } catch (err) {
+      if (bulkMsg) { bulkMsg.textContent = 'Delete failed.'; bulkMsg.className = 'rescreen-msg is-err'; }
     } finally {
       btns.forEach(function (b) { b.disabled = false; });
     }

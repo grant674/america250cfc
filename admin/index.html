@@ -190,6 +190,7 @@ function OptanonWrapper() { }
       <button type="button" class="btn-mini btn-mini--warn" data-bulk-status="flagged">Flag</button>
       <button type="button" class="btn-mini btn-mini--bad" data-bulk-status="rejected">Reject</button>
       <button type="button" class="btn-mini btn-mini--neutral" data-bulk-status="archived">Archive</button>
+      <button type="button" class="btn-mini btn-mini--bad" id="bulk-delete">Delete permanently</button>
       <button type="button" class="btn-mini" id="bulk-clear">Clear</button>
     </div>
     <span class="rescreen-msg" id="bulk-msg" aria-live="polite"></span>
@@ -279,6 +280,11 @@ function OptanonWrapper() { }
         <button type="button" class="btn-mini btn-mini--accent" id="btn-notify-finalist" data-kind="finalist">Email finalist notice</button>
         <button type="button" class="btn-mini btn-mini--gold" id="btn-notify-winner" data-kind="winner">Email winner notice</button>
         <span id="notify-msg" class="rescreen-msg" aria-live="polite"></span>
+      </div>
+      <span class="drawer__foot-label" style="margin-top:14px; border-top:1px solid var(--line); padding-top:14px;">Danger zone</span>
+      <div class="drawer__actions">
+        <button type="button" class="btn-mini btn-mini--bad" id="btn-delete-application">Delete this application permanently</button>
+        <span id="delete-application-msg" class="rescreen-msg" aria-live="polite"></span>
       </div>
     </footer>
   </div>
