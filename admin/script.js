@@ -21,6 +21,12 @@
   var pillsEl = document.getElementById('filter-pills');
   var searchInput = document.getElementById('search-input');
   var statsSummary = document.getElementById('stats-summary');
+  var pagerEl = document.getElementById('pager');
+  var pagerRange = document.getElementById('pager-range');
+  var pagerPage = document.getElementById('pager-page');
+  var pagerPrev = document.getElementById('pager-prev');
+  var pagerNext = document.getElementById('pager-next');
+  var pagerSize = document.getElementById('pager-size');
   var drawer = document.getElementById('drawer');
   var drawerScrim = document.getElementById('drawer-scrim');
   var drawerClose = document.getElementById('drawer-close');
@@ -45,6 +51,8 @@
     inboxStatus: 'all',
     inboxActive: null,    // current open inbox message
     audit: [],
+    page: 1,
+    pageSize: '50', // string mirrors <select> value; 'all' disables paging
   };
   var selectedIds = new Set(); // #10 bulk-selection of application ids
 
@@ -189,13 +197,37 @@
     }
 
     // Table
-    var rows = applyFilters();
-    if (rows.length === 0) {
+    var filtered = applyFilters();
+    if (filtered.length === 0) {
       tbody.innerHTML = '';
       emptyMsg.hidden = false;
+      if (pagerEl) pagerEl.hidden = true;
       return;
     }
     emptyMsg.hidden = true;
+
+    // Pagination over the filtered set. 'all' page size shows everything —
+    // otherwise clamp the current page into range (filtering/searching can
+    // shrink the result set out from under a page the admin was already on).
+    var size = state.pageSize === 'all' ? filtered.length : parseInt(state.pageSize, 10) || 50;
+    var pageCount = Math.max(1, Math.ceil(filtered.length / size));
+    if (state.page > pageCount) state.page = pageCount;
+    if (state.page < 1) state.page = 1;
+    var start = (state.page - 1) * size;
+    var rows = filtered.slice(start, start + size);
+
+    if (pagerEl) {
+      pagerEl.hidden = false;
+      if (pagerRange) {
+        pagerRange.textContent = state.pageSize === 'all'
+          ? ('Showing all ' + filtered.length)
+          : ('Showing ' + (start + 1) + '–' + Math.min(start + size, filtered.length) + ' of ' + filtered.length);
+      }
+      if (pagerPage) pagerPage.textContent = 'Page ' + state.page + ' of ' + pageCount;
+      if (pagerPrev) pagerPrev.disabled = state.page <= 1;
+      if (pagerNext) pagerNext.disabled = state.page >= pageCount;
+    }
+
     var html = rows.map(function (r) {
       var loc = (r.proj_city || '—') + (r.proj_state ? ', ' + r.proj_state : '');
       return [
@@ -1217,12 +1249,30 @@
     pillsEl.querySelectorAll('.filter-pill').forEach(function (x) { x.classList.remove('is-active'); });
     b.classList.add('is-active');
     state.filter = b.getAttribute('data-filter');
+    state.page = 1;
     render();
   });
   searchInput.addEventListener('input', function () {
     state.search = searchInput.value || '';
+    state.page = 1;
     render();
   });
+
+  // ---------- Pagination ----------
+  if (pagerPrev) pagerPrev.addEventListener('click', function () {
+    state.page -= 1;
+    render();
+  });
+  if (pagerNext) pagerNext.addEventListener('click', function () {
+    state.page += 1;
+    render();
+  });
+  if (pagerSize) pagerSize.addEventListener('change', function () {
+    state.pageSize = pagerSize.value;
+    state.page = 1;
+    render();
+  });
+
 
   // ---------- Polling ----------
   async function fetchData() {

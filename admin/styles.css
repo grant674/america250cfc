@@ -1073,6 +1073,18 @@
 .bulk-bar__count { font-weight: 700; font-size: 13px; }
 .bulk-bar__actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .bulk-bar .rescreen-msg { color: rgba(255,255,255,0.85); }
+.pager {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: 10px; padding: 12px 14px; border-top: 1px solid var(--line, rgba(0,0,0,0.08));
+  font-family: var(--font); font-size: 13px; color: var(--fg-65, rgba(0,0,0,0.65));
+}
+.pager__controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.pager__page { font-weight: 700; min-width: 64px; text-align: center; }
+.pager__size { display: flex; align-items: center; gap: 6px; }
+.pager__size select {
+  font: inherit; padding: 5px 8px; border: 1px solid var(--line-strong, rgba(0,0,0,0.2));
+  border-radius: 6px; background: #fff;
+}
 .activity-list { list-style: none; margin: 12px 0 0; padding: 0; border: 1px solid var(--line, rgba(0,0,0,0.08)); border-radius: 8px; overflow: hidden; }
 .activity-item { display: grid; grid-template-columns: 140px 150px 1fr 90px; gap: 10px; align-items: center; padding: 8px 14px; font-size: 12.5px; border-bottom: 1px solid var(--line, rgba(0,0,0,0.06)); }
 .activity-item:last-child { border-bottom: 0; }

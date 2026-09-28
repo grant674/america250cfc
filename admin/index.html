@@ -217,6 +217,24 @@ function OptanonWrapper() { }
       <tr class="admin-loading"><td colspan="9">Loading…</td></tr>
     </tbody>
   </table>
+  <div class="pager" id="pager" hidden>
+    <span class="pager__range" id="pager-range">—</span>
+    <div class="pager__controls">
+      <button type="button" class="btn-mini" id="pager-prev">‹ Prev</button>
+      <span class="pager__page" id="pager-page">Page 1</span>
+      <button type="button" class="btn-mini" id="pager-next">Next ›</button>
+      <label class="pager__size">
+        Show
+        <select id="pager-size">
+          <option value="50">50</option>
+          <option value="100">100</option>
+          <option value="250">250</option>
+          <option value="all">All</option>
+        </select>
+        per page
+      </label>
+    </div>
+  </div>
 </section>
 
 <!-- ============== ACTIVITY LOG (#10) ============== -->
