@@ -7,5 +7,6 @@ Disallow: /admin/
 Disallow: /judge/
 Disallow: /netlify/
 Disallow: /resources/
+Disallow: /tour-preview/
 
 Sitemap: https://america250cfc.org/sitemap.xml

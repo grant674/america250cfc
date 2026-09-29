@@ -1,24 +1,32 @@
 // ============================================================
-// America250 Community Futures Challenge — Two-tier password gate
+// America250 Community Futures Challenge — Three-tier password gate
 //
 // Tier 1 — Site gate.   Cookie nn_auth.   Password from SITE_PASSWORD env var.
-//                       Protects everything except excluded paths and /admin/*.
+//                       Protects everything except excluded paths, /admin/*,
+//                       and /tour-preview/*.
 //
 // Tier 2 — Admin gate.  Cookie nn_admin.  Password from ADMIN_PASSWORD env var.
 //                       Protects /admin/* exclusively.
 //
-// Both gates use session-only cookies (no Max-Age/Expires) — they die when the
-// browser session ends. Authenticated responses ship with Cache-Control: no-store
-// so neither browser nor CDN holds the auth state.
+// Tier 3 — Tour gate.   Cookie nn_tour.   Password from TOUR_PASSWORD env var.
+//                       Protects /tour-preview/* exclusively — independent of
+//                       the site and admin gates, so it can be shared without
+//                       handing out admin access, and stays gated even when
+//                       SITE_PUBLIC=true takes Tier 1 off the rest of the site.
+//
+// All three gates use session-only cookies (no Max-Age/Expires) — they die
+// when the browser session ends. Authenticated responses ship with
+// Cache-Control: no-store so neither browser nor CDN holds the auth state.
 // ============================================================
 
 import type { Config, Context } from "https://edge.netlify.com";
 
 // No hardcoded fallback — the gate fails closed if SITE_PASSWORD is unset.
-// Passwords live only in Netlify env vars (SITE_PASSWORD / ADMIN_PASSWORD);
-// never hardcode or document them in source.
+// Passwords live only in Netlify env vars (SITE_PASSWORD / ADMIN_PASSWORD /
+// TOUR_PASSWORD); never hardcode or document them in source.
 const SITE_COOKIE = "nn_auth";
 const ADMIN_COOKIE = "nn_admin";
+const TOUR_COOKIE = "nn_tour";
 
 // Canonical host. Any request for another host (alias domain) is 301'd here
 // before the gate runs — so nextnow250.org and america250cfc.com/.net all
@@ -153,7 +161,7 @@ const GATE_CSP = [
 ].join("; ");
 
 interface GateOpts {
-  variant: "site" | "admin";
+  variant: "site" | "admin" | "tour";
   error?: string;
   returnTo: string;
 }
@@ -166,16 +174,21 @@ function gateHtml(opts: GateOpts): string {
       .replace(/"/g, "&quot;");
 
   const isAdmin = opts.variant === "admin";
+  const isTour = opts.variant === "tour";
   const title = isAdmin
     ? "America250 CFC — Admin"
+    : isTour
+    ? "America250 CFC — Preview"
     : "America250 CFC — Restricted preview";
   const heading = isAdmin
     ? "Admin dashboard"
     : "This is a private preview";
   const body = isAdmin
     ? "Enter the admin password to view applications, AI screening results, and live program metrics."
+    : isTour
+    ? "Enter the password to view this preview page. The password expires when this browser session ends."
     : "Enter the password to view the preview site. The password expires when this browser session ends.";
-  const action = isAdmin ? "/__admin_auth" : "/__auth";
+  const action = isAdmin ? "/__admin_auth" : isTour ? "/__tour_auth" : "/__auth";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -343,7 +356,7 @@ async function handleAuthSubmit(
   cookieName: string,
   tokenLabel: string,
   defaultReturn: string,
-  variant: "site" | "admin",
+  variant: "site" | "admin" | "tour",
   serverSecret: string,
 ): Promise<Response> {
   const ct = request.headers.get("content-type") || "";
@@ -416,6 +429,7 @@ export default async (
 
   const sitePassword = Deno.env.get("SITE_PASSWORD") ?? "";
   const adminPassword = Deno.env.get("ADMIN_PASSWORD") ?? "";
+  const tourPassword = Deno.env.get("TOUR_PASSWORD") ?? "";
   const serverSecret = Deno.env.get("NN_AUTH_SECRET") ?? "";
 
   // SITE_PUBLIC=true disables ONLY the Tier-1 site gate so the site serves
@@ -444,6 +458,9 @@ export default async (
   const expectedAdminToken = (adminPassword && serverSecret)
     ? await sessionToken(serverSecret, "nn-admin-v1", adminPassword)
     : "";
+  const expectedTourToken = (tourPassword && serverSecret)
+    ? await sessionToken(serverSecret, "nn-tour-v1", tourPassword)
+    : "";
 
   // -------- Site auth submit --------
   if (url.pathname === "/__auth" && request.method === "POST") {
@@ -458,8 +475,17 @@ export default async (
     return handleAuthSubmit(request, adminPassword, ADMIN_COOKIE, "nn-admin-v1", "/admin/", "admin", serverSecret);
   }
 
+  // -------- Tour-preview auth submit --------
+  if (url.pathname === "/__tour_auth" && request.method === "POST") {
+    if (!tourPassword) {
+      return new Response("Tour preview password not configured", { status: 503 });
+    }
+    return handleAuthSubmit(request, tourPassword, TOUR_COOKIE, "nn-tour-v1", "/tour-preview/", "tour", serverSecret);
+  }
+
   const cookieHeader = request.headers.get("cookie") ?? "";
   const isAdminPath = url.pathname.startsWith("/admin/") || url.pathname === "/admin";
+  const isTourPath = url.pathname.startsWith("/tour-preview/") || url.pathname === "/tour-preview";
 
   // -------- /admin/* — admin gate only --------
   if (isAdminPath) {
@@ -469,6 +495,24 @@ export default async (
     const candidates = getCookieValues(cookieHeader, ADMIN_COOKIE);
     if (!anyTimingSafeEqual(candidates, expectedAdminToken)) {
       return gateResponse({ variant: "admin", returnTo: url.pathname + url.search });
+    }
+    const response = await context.next();
+    const out = new Response(response.body, response);
+    noStore(out.headers);
+    return out;
+  }
+
+  // -------- /tour-preview/* — tour gate only --------
+  // Independent of the site and admin gates: gated even when SITE_PUBLIC=true
+  // takes Tier 1 off the rest of the site, and doesn't require the admin
+  // password to view — meant to be shareable without handing out admin access.
+  if (isTourPath) {
+    if (!tourPassword) {
+      return new Response("Tour preview password not configured", { status: 503 });
+    }
+    const candidates = getCookieValues(cookieHeader, TOUR_COOKIE);
+    if (!anyTimingSafeEqual(candidates, expectedTourToken)) {
+      return gateResponse({ variant: "tour", returnTo: url.pathname + url.search });
     }
     const response = await context.next();
     const out = new Response(response.body, response);
