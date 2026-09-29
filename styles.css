@@ -663,14 +663,19 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
    ============================================================ */
 .tour-stops { margin-top: 24px; }
 .tour-row {
-  display: grid;
-  grid-template-columns: 80px 1fr 200px 120px;
-  gap: 24px;
-  align-items: baseline;
-  padding: 24px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.20);
 }
 .tour-row:last-child { border-bottom: 1px solid rgba(255, 255, 255, 0.20); }
+.tour-row__summary {
+  display: grid;
+  grid-template-columns: 80px 1fr 200px 120px 24px;
+  gap: 24px;
+  align-items: baseline;
+  padding: 24px 0;
+  list-style: none;
+}
+details.tour-row > summary.tour-row__summary { cursor: pointer; }
+.tour-row__summary::-webkit-details-marker { display: none; }
 .tour-row__n {
   font-family: var(--font);
   font-weight: 700;
@@ -723,13 +728,93 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
   border-color: var(--c-yellow);
   color: var(--c-black);
 }
+.tour-row--summit .tour-row__summary { cursor: default; }
+/* Expand indicator — same +/× mechanic as the FAQ's .qa__sign, kept as a
+   separate class so its grid-area can be placed independently on mobile. */
+.tour-row__sign {
+  position: relative;
+  width: 18px; height: 18px;
+  display: block;
+  justify-self: end;
+  align-self: center;
+}
+.tour-row__sign::before, .tour-row__sign::after {
+  content: "";
+  position: absolute;
+  background: var(--c-yellow);
+  transition: transform var(--dur) var(--ease);
+}
+.tour-row__sign::before { left: 0; right: 0; top: 50%; height: 2px; transform: translateY(-50%); }
+.tour-row__sign::after  { top: 0; bottom: 0; left: 50%; width: 2px; transform: translateX(-50%); }
+.tour-row[open] .tour-row__sign::after { transform: translateX(-50%) scaleY(0); }
+
+/* Photo carousel — inside each expanded tour row. Dependency-free: a
+   scroll-snap track plus prev/next buttons and dots wired up in a small
+   inline script on tour-preview/index.html (drop real photos in at the
+   same paths under /assets/tour/ to replace the placeholders). */
+.tour-row__panel { padding: 0 0 28px; }
+.carousel { position: relative; max-width: 480px; }
+.carousel__track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  gap: 12px;
+  border-radius: 8px;
+  scrollbar-width: none;
+}
+.carousel__track::-webkit-scrollbar { display: none; }
+.carousel__item {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+}
+.carousel__item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.carousel__btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--c-white);
+  border: 0;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--dur) var(--ease);
+}
+.carousel__btn:hover { background: rgba(0, 0, 0, 0.8); }
+.carousel__btn--prev { left: 8px; }
+.carousel__btn--next { right: 8px; }
+.carousel__dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 10px;
+}
+.carousel__dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.carousel__dot.is-active { background: var(--c-yellow); }
+
 @media (max-width: 880px) {
-  .tour-row {
-    grid-template-columns: auto 1fr;
+  .tour-row__summary {
+    grid-template-columns: auto 1fr 24px;
     grid-template-areas:
-      "n   date"
-      "body body"
-      "pin  pin";
+      "n   date sign"
+      "body body body"
+      "pin  pin  pin";
     row-gap: 8px;
     column-gap: 16px;
     padding: 20px 0;
@@ -738,6 +823,7 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
   .tour-row__body { grid-area: body; }
   .tour-row__date { grid-area: date; justify-self: end; }
   .tour-row__pin  { grid-area: pin; justify-self: start; }
+  .tour-row__sign { grid-area: sign; }
 }
 
 /* ============================================================
@@ -1451,6 +1537,10 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
 .qa[open] .qa__sign::before,
 .qa[open] .qa__sign::after { background: var(--c-blue); }
 
+/* Tour-row expand sign — brighten on hover, same mechanic as FAQ. */
+.tour-row__summary:hover .tour-row__sign::before,
+.tour-row__summary:hover .tour-row__sign::after { background: var(--c-white); }
+
 /* End-CTA white button — gentle press feedback. */
 .endcta .btn--white { transition: background var(--dur) var(--ease), transform var(--dur) var(--ease); }
 .endcta .btn--white:hover { transform: translateY(-2px); }
@@ -1480,6 +1570,16 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote { margin: 0; text-wrap: pretty; }
   .qa[open] .qa__a {
     height: auto;
     padding-bottom: 22px;
+  }
+  .tour-row__panel {
+    height: 0;
+    overflow: hidden;
+    transition: height 280ms var(--ease), padding 280ms var(--ease);
+    padding-bottom: 0;
+  }
+  .tour-row[open] .tour-row__panel {
+    height: auto;
+    padding-bottom: 28px;
   }
 }
 

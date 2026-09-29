@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Pittsburgh, PA — sample tour photo 2 of 3">
+  <defs>
+    <linearGradient id="gpittsburgh2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8C1D40"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.25"/>
+    </linearGradient>
+    <pattern id="stripespittsburgh2" width="64" height="64" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+      <rect width="64" height="64" fill="transparent"/>
+      <rect width="14" height="64" fill="#F2D42B" fill-opacity="0.06"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="600" fill="url(#gpittsburgh2)"/>
+  <rect width="800" height="600" fill="url(#stripespittsburgh2)"/>
+  <text x="400" y="288" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="46" fill="#ffffff">Pittsburgh, PA</text>
+  <text x="400" y="332" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="400" font-size="16" letter-spacing="2" fill="#F2D42B">SAMPLE PHOTO 2 OF 3</text>
+</svg>
