@@ -10,6 +10,7 @@
   var POLL_INTERVAL_MS = 10000;
   var LIST_ENDPOINT = '/.netlify/functions/admin-list';
   var UPDATE_ENDPOINT = '/.netlify/functions/admin-update';
+  var DRAFTS_ENDPOINT = '/.netlify/functions/admin-list-drafts';
 
   // ---------- DOM ----------
   var statusDot = document.getElementById('status-dot');
@@ -53,6 +54,11 @@
     audit: [],
     page: 1,
     pageSize: '50', // string mirrors <select> value; 'all' disables paging
+    drafts: [],
+    draftsLoaded: false,
+    draftFilter: 'all',
+    activeDraft: null,
+    messageTarget: null, // { endpoint, idKey, idValue, context, subjectDefault } for the shared compose modal
   };
   var selectedIds = new Set(); // #10 bulk-selection of application ids
 
@@ -971,13 +977,10 @@
   var messageSubmit = document.getElementById('message-submit');
   var messageMsg = document.getElementById('message-msg');
 
-  function openMessageModal() {
-    if (!state.activeRow) return;
-    var row = state.activeRow;
-    document.getElementById('message-context').textContent =
-      'To ' + (row.lead_name || 'applicant') + ' <' + (row.lead_email || '—') + '>';
-    document.getElementById('message-subject').value =
-      'Your America250 CFC application' + (row.proj_title ? ' — ' + row.proj_title : '');
+  function openMessageModal(target) {
+    state.messageTarget = target;
+    document.getElementById('message-context').textContent = target.context;
+    document.getElementById('message-subject').value = target.subjectDefault;
     document.getElementById('message-text').value = '';
     messageMsg.textContent = '';
     messageMsg.className = 'invite-msg';
@@ -987,9 +990,20 @@
   function closeMessageModal() {
     messageModal.setAttribute('aria-hidden', 'true');
     messageForm.reset();
+    state.messageTarget = null;
   }
   var btnMessageApplicant = document.getElementById('btn-message-applicant');
-  if (btnMessageApplicant) btnMessageApplicant.addEventListener('click', openMessageModal);
+  if (btnMessageApplicant) btnMessageApplicant.addEventListener('click', function () {
+    if (!state.activeRow) return;
+    var row = state.activeRow;
+    openMessageModal({
+      endpoint: '/.netlify/functions/admin-message-applicant',
+      idKey: 'id',
+      idValue: row.id,
+      context: 'To ' + (row.lead_name || 'applicant') + ' <' + (row.lead_email || '—') + '>',
+      subjectDefault: 'Your America250 CFC application' + (row.proj_title ? ' — ' + row.proj_title : ''),
+    });
+  });
   document.querySelectorAll('[data-message-close]').forEach(function (el) {
     el.addEventListener('click', closeMessageModal);
   });
@@ -998,13 +1012,13 @@
   });
   messageForm.addEventListener('submit', async function (e) {
     e.preventDefault();
-    if (!state.activeRow) return;
+    if (!state.messageTarget) return;
+    var target = state.messageTarget;
     var fd = new FormData(messageForm);
-    var payload = {
-      id: state.activeRow.id,
-      subject: String(fd.get('subject') || '').trim(),
-      text: String(fd.get('text') || '').trim(),
-    };
+    var payload = {};
+    payload[target.idKey] = target.idValue;
+    payload.subject = String(fd.get('subject') || '').trim();
+    payload.text = String(fd.get('text') || '').trim();
     if (!payload.subject || !payload.text) {
       messageMsg.textContent = 'Subject and message required.';
       messageMsg.className = 'invite-msg is-err';
@@ -1014,7 +1028,7 @@
     messageMsg.textContent = 'Sending…';
     messageMsg.className = 'invite-msg';
     try {
-      var res = await fetch('/.netlify/functions/admin-message-applicant', {
+      var res = await fetch(target.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -1022,7 +1036,7 @@
       });
       var data = await res.json().catch(function () { return {}; });
       if (res.status === 422) {
-        messageMsg.textContent = 'No valid applicant email on file.';
+        messageMsg.textContent = 'No valid email on file.';
         messageMsg.className = 'invite-msg is-err';
         return;
       }
@@ -1398,4 +1412,178 @@
 
   fetchData();
   startPolling();
+
+  // ---------- Drafts (unsubmitted applications) ----------
+  // Fetched once on load (not on the main poll cycle — it's a secondary,
+  // occasional-use view and the table can run to hundreds of rows).
+  var TOTAL_APPLY_STEPS = 6;
+  var draftsSub = document.getElementById('drafts-sub');
+  var draftsTbody = document.getElementById('drafts-tbody');
+  var draftsTableWrap = document.getElementById('drafts-table-wrap');
+  var btnToggleDrafts = document.getElementById('btn-toggle-drafts');
+  var draftsFilterPills = document.getElementById('drafts-filter-pills');
+
+  function draftFields(d) { return (d && d.data && d.data.fields) || {}; }
+  function draftProgress(d) {
+    var step = d.data && typeof d.data.farthest === 'number' ? d.data.farthest : (d.data && d.data.step);
+    if (typeof step !== 'number') return '—';
+    return 'Step ' + Math.min(Math.max(step, 1), TOTAL_APPLY_STEPS) + ' of ' + TOTAL_APPLY_STEPS;
+  }
+  function applyDraftFilters() {
+    return state.drafts.filter(function (d) {
+      if (state.draftFilter === 'email') return !!(d.email && d.email.trim());
+      return true;
+    });
+  }
+  function renderDrafts() {
+    var filtered = applyDraftFilters();
+    if (draftsSub) {
+      draftsSub.textContent = state.drafts.length + ' unsubmitted draft' + (state.drafts.length === 1 ? '' : 's') +
+        (state.draftFilter === 'email' ? ' · ' + filtered.length + ' with an email on file' : '');
+    }
+    if (!draftsTbody) return;
+    if (filtered.length === 0) {
+      draftsTbody.innerHTML = '<tr><td colspan="6" style="color:var(--fg-65);padding:16px 14px;">No drafts match.</td></tr>';
+      return;
+    }
+    draftsTbody.innerHTML = filtered.map(function (d) {
+      var f = draftFields(d);
+      var lead = f.lead_name || '—';
+      var org = f.org_name || '';
+      return [
+        '<tr data-token="', escHtml(d.token), '">',
+        '<td><span class="cell-when">', escHtml(fmtDate(d.updated_at)), '</span></td>',
+        '<td>', d.email ? escHtml(d.email) : '<span style="color:var(--fg-65)">no email</span>', '</td>',
+        '<td>',
+          '<span class="cell-lead">', escHtml(lead), '</span>',
+          '<span class="cell-lead-org">', escHtml(org), '</span>',
+        '</td>',
+        '<td><span class="cell-proj">', escHtml(f.proj_title || '—'), '</span></td>',
+        '<td><span class="cell-when">', escHtml(draftProgress(d)), '</span></td>',
+        '<td>›</td>',
+        '</tr>',
+      ].join('');
+    }).join('');
+    Array.prototype.forEach.call(draftsTbody.querySelectorAll('tr[data-token]'), function (tr) {
+      tr.addEventListener('click', function () { openDraftDrawer(tr.getAttribute('data-token')); });
+    });
+  }
+  async function fetchDrafts() {
+    try {
+      var res = await fetch(DRAFTS_ENDPOINT, { credentials: 'include' });
+      if (res.status === 401) { window.location.href = '/admin/'; return; }
+      if (!res.ok) throw new Error('Fetch failed: ' + res.status);
+      var data = await res.json();
+      state.drafts = data.drafts || [];
+      state.draftsLoaded = true;
+      renderDrafts();
+    } catch (err) {
+      console.error('Drafts fetch error:', err);
+      if (draftsSub) draftsSub.textContent = 'Couldn\'t load drafts.';
+    }
+  }
+  if (btnToggleDrafts) btnToggleDrafts.addEventListener('click', function () {
+    var open = draftsTableWrap.hidden;
+    draftsTableWrap.hidden = !open;
+    btnToggleDrafts.textContent = open ? 'Hide' : 'Show';
+    btnToggleDrafts.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open && !state.draftsLoaded) fetchDrafts();
+  });
+  if (draftsFilterPills) draftsFilterPills.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-draft-filter]');
+    if (!b) return;
+    draftsFilterPills.querySelectorAll('.filter-pill').forEach(function (x) { x.classList.remove('is-active'); });
+    b.classList.add('is-active');
+    state.draftFilter = b.getAttribute('data-draft-filter');
+    renderDrafts();
+  });
+
+  // ---------- Draft detail drawer ----------
+  var draftDrawer = document.getElementById('draft-drawer');
+  var draftDrawerScrim = document.getElementById('draft-drawer-scrim');
+  var draftDrawerClose = document.getElementById('draft-drawer-close');
+  var draftDrawerId = document.getElementById('draft-drawer-id');
+  var draftDrawerTitle = document.getElementById('draft-drawer-title');
+  var draftDrawerSub = document.getElementById('draft-drawer-sub');
+  var draftDrawerBody = document.getElementById('draft-drawer-body');
+  var btnMessageDraft = document.getElementById('btn-message-draft');
+
+  function renderDraftDrawerBody(d) {
+    var f = draftFields(d);
+    return [
+      '<section class="drawer__section">',
+        '<h3>Progress</h3>',
+        '<dl>',
+          row('Furthest step reached', draftProgress(d)),
+          row('Started', fmtDateLong(d.created_at)),
+          row('Last saved', fmtDateLong(d.updated_at)),
+        '</dl>',
+      '</section>',
+
+      '<section class="drawer__section">',
+        '<h3>Lead applicant</h3>',
+        '<dl>',
+          row('Name', f.lead_name),
+          row('Role', f.lead_role),
+          row('Email', f.lead_email),
+        '</dl>',
+      '</section>',
+
+      '<section class="drawer__section">',
+        '<h3>Organization</h3>',
+        '<dl>',
+          row('Name', f.org_name),
+          row('Website', f.org_url, { link: true }),
+          row('EIN', f.org_ein),
+        '</dl>',
+      '</section>',
+
+      '<section class="drawer__section">',
+        '<h3>Project</h3>',
+        '<dl>',
+          row('Title', f.proj_title),
+          row('Summary', f.proj_summary),
+          row('Category', f.proj_category),
+          row('Phase', f.proj_phase),
+          row('Location', (f.proj_city || '') + (f.proj_state ? ', ' + f.proj_state : '')),
+          row('Budget total', fmtMoney(f.proj_budget_total)),
+        '</dl>',
+      '</section>',
+    ].join('');
+  }
+  function openDraftDrawer(token) {
+    var d = state.drafts.find(function (x) { return x.token === token; });
+    if (!d) return;
+    state.activeDraft = d;
+    var f = draftFields(d);
+    draftDrawerId.textContent = d.token.slice(0, 8) + '…';
+    draftDrawerTitle.textContent = f.proj_title || f.lead_name || 'Untitled draft';
+    draftDrawerSub.textContent = draftProgress(d) + ' · last saved ' + fmtDateLong(d.updated_at);
+    draftDrawerBody.innerHTML = renderDraftDrawerBody(d);
+    if (btnMessageDraft) btnMessageDraft.disabled = !(d.email && d.email.trim());
+    draftDrawer.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeDraftDrawer() {
+    draftDrawer.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    state.activeDraft = null;
+  }
+  if (draftDrawerScrim) draftDrawerScrim.addEventListener('click', closeDraftDrawer);
+  if (draftDrawerClose) draftDrawerClose.addEventListener('click', closeDraftDrawer);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && draftDrawer && draftDrawer.getAttribute('aria-hidden') === 'false') closeDraftDrawer();
+  });
+  if (btnMessageDraft) btnMessageDraft.addEventListener('click', function () {
+    if (!state.activeDraft || !state.activeDraft.email) return;
+    var d = state.activeDraft;
+    var f = draftFields(d);
+    openMessageModal({
+      endpoint: '/.netlify/functions/admin-message-draft',
+      idKey: 'token',
+      idValue: d.token,
+      context: 'To ' + (f.lead_name || 'applicant') + ' <' + d.email + '>',
+      subjectDefault: 'Finish your America250 CFC application' + (f.proj_title ? ' — ' + f.proj_title : ''),
+    });
+  });
 })();

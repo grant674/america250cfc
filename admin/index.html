@@ -237,6 +237,38 @@ function OptanonWrapper() { }
   </div>
 </section>
 
+<!-- ============== DRAFTS — unsubmitted applications ============== -->
+<section class="container admin-drafts" id="admin-drafts" aria-label="Unsubmitted applications">
+  <div class="admin-inbox__head">
+    <div>
+      <h2 class="admin-inbox__h">Unsubmitted applications</h2>
+      <p class="admin-inbox__sub" id="drafts-sub">Loading…</p>
+    </div>
+    <div class="admin-drafts__controls">
+      <div class="filter-pills" id="drafts-filter-pills">
+        <button type="button" class="filter-pill is-active" data-draft-filter="all">All</button>
+        <button type="button" class="filter-pill" data-draft-filter="email">Has email</button>
+      </div>
+      <button type="button" class="admin-judging__toggle" id="btn-toggle-drafts" aria-expanded="false" aria-controls="drafts-table-wrap">Show</button>
+    </div>
+  </div>
+  <div id="drafts-table-wrap" hidden>
+    <table class="admin-table" id="drafts-table">
+      <thead>
+        <tr>
+          <th>Updated</th>
+          <th>Email</th>
+          <th>Lead / Org</th>
+          <th>Project</th>
+          <th>Progress</th>
+          <th aria-label="Expand"></th>
+        </tr>
+      </thead>
+      <tbody id="drafts-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
 <!-- ============== ACTIVITY LOG (#10) ============== -->
 <section class="container admin-activity" id="admin-activity" aria-label="Activity log" hidden>
   <div class="admin-inbox__head">
@@ -332,6 +364,32 @@ function OptanonWrapper() { }
         <button type="button" class="btn-mini" data-inbox-action="mark_unread">Mark unread</button>
         <button type="button" class="btn-mini btn-mini--warn" data-inbox-action="mark_spam">Spam</button>
         <button type="button" class="btn-mini btn-mini--neutral" data-inbox-action="archive">Archive</button>
+      </div>
+    </footer>
+  </div>
+</aside>
+
+<!-- ============== DRAFT DETAIL DRAWER ============== -->
+<aside class="drawer" id="draft-drawer" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="draft-drawer-title">
+  <div class="drawer__scrim" id="draft-drawer-scrim"></div>
+  <div class="drawer__panel" role="document">
+    <header class="drawer__head">
+      <div style="flex:1 1 auto;min-width:0">
+        <span class="drawer__id" id="draft-drawer-id">—</span>
+        <h2 class="drawer__title" id="draft-drawer-title">—</h2>
+        <p class="drawer__sub" id="draft-drawer-sub">—</p>
+      </div>
+      <button type="button" class="drawer__close" id="draft-drawer-close" aria-label="Close">×</button>
+    </header>
+
+    <div class="drawer__body" id="draft-drawer-body">
+      <p style="color:var(--fg-65); font-family:var(--font); font-size:13px">Loading…</p>
+    </div>
+
+    <footer class="drawer__foot" id="draft-drawer-foot">
+      <span class="drawer__foot-label">Contact</span>
+      <div class="drawer__actions">
+        <button type="button" class="btn-mini btn-mini--blue" id="btn-message-draft">Message about this draft</button>
       </div>
     </footer>
   </div>
