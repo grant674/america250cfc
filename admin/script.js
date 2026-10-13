@@ -57,6 +57,7 @@
     drafts: [],
     draftsLoaded: false,
     draftFilter: 'all',
+    draftSearch: '',
     activeDraft: null,
     messageTarget: null, // { endpoint, idKey, idValue, context, subjectDefault } for the shared compose modal
   };
@@ -1423,6 +1424,7 @@
   var draftsTableWrap = document.getElementById('drafts-table-wrap');
   var btnToggleDrafts = document.getElementById('btn-toggle-drafts');
   var draftsFilterPills = document.getElementById('drafts-filter-pills');
+  var draftsSearchInput = document.getElementById('drafts-search-input');
 
   function draftFields(d) { return (d && d.data && d.data.fields) || {}; }
   function draftProgress(d) {
@@ -1431,9 +1433,16 @@
     return 'Step ' + Math.min(Math.max(step, 1), TOTAL_APPLY_STEPS) + ' of ' + TOTAL_APPLY_STEPS;
   }
   function applyDraftFilters() {
+    var q = state.draftSearch.trim().toLowerCase();
     return state.drafts.filter(function (d) {
-      if (state.draftFilter === 'email') return !!(d.email && d.email.trim());
-      return true;
+      if (state.draftFilter === 'email' && !(d.email && d.email.trim())) return false;
+      if (!q) return true;
+      var f = draftFields(d);
+      var hay = [
+        d.token, d.email, f.lead_name, f.lead_email, f.org_name, f.proj_title,
+        f.proj_summary, f.proj_city, f.proj_state, f.proj_category,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return hay.indexOf(q) !== -1;
     });
   }
   function renderDrafts() {
@@ -1446,8 +1455,10 @@
     }
     var filtered = applyDraftFilters();
     if (draftsSub) {
-      draftsSub.textContent = state.drafts.length + ' unsubmitted draft' + (state.drafts.length === 1 ? '' : 's') +
-        (state.draftFilter === 'email' ? ' · ' + filtered.length + ' with an email on file' : '');
+      var draftsSubText = state.drafts.length + ' unsubmitted draft' + (state.drafts.length === 1 ? '' : 's');
+      if (state.draftFilter === 'email') draftsSubText += ' · ' + filtered.length + ' with an email on file';
+      if (state.draftSearch.trim()) draftsSubText += ' · ' + filtered.length + ' matching search';
+      draftsSub.textContent = draftsSubText;
     }
     if (!draftsTbody) return;
     if (filtered.length === 0) {
@@ -1509,6 +1520,10 @@
     draftsFilterPills.querySelectorAll('.filter-pill').forEach(function (x) { x.classList.remove('is-active'); });
     b.classList.add('is-active');
     state.draftFilter = b.getAttribute('data-draft-filter');
+    renderDrafts();
+  });
+  if (draftsSearchInput) draftsSearchInput.addEventListener('input', function () {
+    state.draftSearch = draftsSearchInput.value || '';
     renderDrafts();
   });
 
