@@ -61,6 +61,7 @@
     messageTarget: null, // { endpoint, idKey, idValue, context, subjectDefault } for the shared compose modal
   };
   var selectedIds = new Set(); // #10 bulk-selection of application ids
+  var selectedDraftTokens = new Set(); // bulk-selection of draft tokens (separate set — different id shape/table)
 
   // ---------- Helpers ----------
   function fmtMoney(v) {
@@ -1436,6 +1437,13 @@
     });
   }
   function renderDrafts() {
+    // Drop any selected tokens that are no longer in the dataset (e.g. after
+    // a refresh) so a stale selection can't target vanished drafts.
+    if (selectedDraftTokens.size) {
+      var present = {};
+      (state.drafts || []).forEach(function (d) { present[d.token] = true; });
+      Array.from(selectedDraftTokens).forEach(function (t) { if (!present[t]) selectedDraftTokens.delete(t); });
+    }
     var filtered = applyDraftFilters();
     if (draftsSub) {
       draftsSub.textContent = state.drafts.length + ' unsubmitted draft' + (state.drafts.length === 1 ? '' : 's') +
@@ -1443,7 +1451,8 @@
     }
     if (!draftsTbody) return;
     if (filtered.length === 0) {
-      draftsTbody.innerHTML = '<tr><td colspan="6" style="color:var(--fg-65);padding:16px 14px;">No drafts match.</td></tr>';
+      draftsTbody.innerHTML = '<tr><td colspan="7" style="color:var(--fg-65);padding:16px 14px;">No drafts match.</td></tr>';
+      syncDraftsSelectAll();
       return;
     }
     draftsTbody.innerHTML = filtered.map(function (d) {
@@ -1452,6 +1461,7 @@
       var org = f.org_name || '';
       return [
         '<tr data-token="', escHtml(d.token), '">',
+        '<td class="col-check"><input type="checkbox" class="row-cb draft-row-cb" data-cb-token="', escHtml(d.token), '" aria-label="Select"', (selectedDraftTokens.has(d.token) ? ' checked' : ''), ' /></td>',
         '<td><span class="cell-when">', escHtml(fmtDate(d.updated_at)), '</span></td>',
         '<td>', d.email ? escHtml(d.email) : '<span style="color:var(--fg-65)">no email</span>', '</td>',
         '<td>',
@@ -1465,8 +1475,12 @@
       ].join('');
     }).join('');
     Array.prototype.forEach.call(draftsTbody.querySelectorAll('tr[data-token]'), function (tr) {
-      tr.addEventListener('click', function () { openDraftDrawer(tr.getAttribute('data-token')); });
+      tr.addEventListener('click', function (e) {
+        if (e.target.closest('.col-check')) return;
+        openDraftDrawer(tr.getAttribute('data-token'));
+      });
     });
+    syncDraftsSelectAll();
   }
   async function fetchDrafts() {
     try {
@@ -1496,6 +1510,75 @@
     b.classList.add('is-active');
     state.draftFilter = b.getAttribute('data-draft-filter');
     renderDrafts();
+  });
+
+  // ---------- Drafts bulk selection + permanent delete ----------
+  // Mirrors the applications bulk-select/delete pattern above, with its own
+  // selection set (selectedDraftTokens) since drafts are a different table
+  // keyed by token, not id.
+  var draftsBulkBar = document.getElementById('drafts-bulk-bar');
+  var draftsBulkCount = document.getElementById('drafts-bulk-count');
+  var draftsBulkMsg = document.getElementById('drafts-bulk-msg');
+  var draftsSelectAllEl = document.getElementById('drafts-select-all');
+  function updateDraftsBulkBar() {
+    var n = selectedDraftTokens.size;
+    if (draftsBulkBar) draftsBulkBar.hidden = n === 0;
+    if (draftsBulkCount) draftsBulkCount.textContent = n + ' selected';
+  }
+  function syncDraftsSelectAll() {
+    if (!draftsSelectAllEl || !draftsTbody) return;
+    var cbs = draftsTbody.querySelectorAll('.draft-row-cb');
+    var checked = 0;
+    cbs.forEach(function (cb) { if (cb.checked) checked++; });
+    draftsSelectAllEl.checked = cbs.length > 0 && checked === cbs.length;
+    draftsSelectAllEl.indeterminate = checked > 0 && checked < cbs.length;
+    updateDraftsBulkBar();
+  }
+  if (draftsTbody) draftsTbody.addEventListener('change', function (e) {
+    var cb = e.target.closest('.draft-row-cb');
+    if (!cb) return;
+    var token = cb.getAttribute('data-cb-token');
+    if (cb.checked) selectedDraftTokens.add(token); else selectedDraftTokens.delete(token);
+    syncDraftsSelectAll();
+  });
+  if (draftsSelectAllEl) draftsSelectAllEl.addEventListener('change', function () {
+    draftsTbody.querySelectorAll('.draft-row-cb').forEach(function (cb) {
+      cb.checked = draftsSelectAllEl.checked;
+      var token = cb.getAttribute('data-cb-token');
+      if (draftsSelectAllEl.checked) selectedDraftTokens.add(token); else selectedDraftTokens.delete(token);
+    });
+    updateDraftsBulkBar();
+  });
+  var draftsBulkClear = document.getElementById('drafts-bulk-clear');
+  if (draftsBulkClear) draftsBulkClear.addEventListener('click', function () {
+    selectedDraftTokens.clear();
+    draftsTbody.querySelectorAll('.draft-row-cb').forEach(function (cb) { cb.checked = false; });
+    syncDraftsSelectAll();
+    if (draftsBulkMsg) draftsBulkMsg.textContent = '';
+  });
+  var draftsBulkDelete = document.getElementById('drafts-bulk-delete');
+  if (draftsBulkDelete) draftsBulkDelete.addEventListener('click', async function () {
+    var tokens = Array.from(selectedDraftTokens);
+    if (!tokens.length) return;
+    var confirmMsg = 'Permanently delete ' + tokens.length + ' draft' + (tokens.length === 1 ? '' : 's') + '? This cannot be undone.';
+    if (!window.confirm(confirmMsg)) return;
+    var btns = draftsBulkBar.querySelectorAll('button');
+    btns.forEach(function (b) { b.disabled = true; });
+    if (draftsBulkMsg) { draftsBulkMsg.textContent = 'Deleting ' + tokens.length + '…'; draftsBulkMsg.className = 'rescreen-msg'; }
+    try {
+      var res = await fetch('/.netlify/functions/admin-delete-drafts', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ tokens: tokens })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      selectedDraftTokens.clear();
+      if (draftsBulkMsg) { draftsBulkMsg.textContent = 'Deleted. Refreshing…'; draftsBulkMsg.className = 'rescreen-msg is-ok'; }
+      setTimeout(fetchDrafts, 800);
+    } catch (err) {
+      if (draftsBulkMsg) { draftsBulkMsg.textContent = 'Delete failed.'; draftsBulkMsg.className = 'rescreen-msg is-err'; }
+    } finally {
+      btns.forEach(function (b) { b.disabled = false; });
+    }
   });
 
   // ---------- Draft detail drawer ----------
@@ -1591,5 +1674,37 @@
         'If you have any questions, just reply to this email.\n\n' +
         '— The America250 CFC team',
     });
+  });
+
+  // Permanent single-draft delete. Irreversible — nothing cascades (no FK
+  // references application_drafts), but there's no undo either way.
+  var btnDeleteDraft = document.getElementById('btn-delete-draft');
+  var deleteDraftMsg = document.getElementById('delete-draft-msg');
+  if (btnDeleteDraft) btnDeleteDraft.addEventListener('click', async function () {
+    if (!state.activeDraft) return;
+    var d = state.activeDraft;
+    var f = draftFields(d);
+    var label = f.proj_title || f.lead_name || d.token;
+    if (!window.confirm('Permanently delete "' + label + '"? This cannot be undone.')) return;
+    btnDeleteDraft.disabled = true;
+    var orig = btnDeleteDraft.textContent;
+    btnDeleteDraft.textContent = 'Deleting…';
+    if (deleteDraftMsg) { deleteDraftMsg.textContent = ''; deleteDraftMsg.className = 'rescreen-msg'; }
+    try {
+      var res = await fetch('/.netlify/functions/admin-delete-drafts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ tokens: [d.token] })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      selectedDraftTokens.delete(d.token);
+      closeDraftDrawer();
+      fetchDrafts();
+    } catch (err) {
+      if (deleteDraftMsg) { deleteDraftMsg.textContent = 'Delete failed. Try again.'; deleteDraftMsg.className = 'rescreen-msg is-err'; }
+      btnDeleteDraft.disabled = false;
+      btnDeleteDraft.textContent = orig;
+    }
   });
 })();

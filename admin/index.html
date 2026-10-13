@@ -253,9 +253,18 @@ function OptanonWrapper() { }
     </div>
   </div>
   <div id="drafts-table-wrap" hidden>
+    <div class="bulk-bar" id="drafts-bulk-bar" hidden>
+      <span class="bulk-bar__count" id="drafts-bulk-count">0 selected</span>
+      <div class="bulk-bar__actions">
+        <button type="button" class="btn-mini btn-mini--bad" id="drafts-bulk-delete">Delete permanently</button>
+        <button type="button" class="btn-mini" id="drafts-bulk-clear">Clear</button>
+      </div>
+      <span class="rescreen-msg" id="drafts-bulk-msg" aria-live="polite"></span>
+    </div>
     <table class="admin-table" id="drafts-table">
       <thead>
         <tr>
+          <th class="col-check"><input type="checkbox" id="drafts-select-all" aria-label="Select all visible" /></th>
           <th>Updated</th>
           <th>Email</th>
           <th>Lead / Org</th>
@@ -390,6 +399,11 @@ function OptanonWrapper() { }
       <span class="drawer__foot-label">Contact</span>
       <div class="drawer__actions">
         <button type="button" class="btn-mini btn-mini--blue" id="btn-message-draft">Message about this draft</button>
+      </div>
+      <span class="drawer__foot-label" style="margin-top:14px; border-top:1px solid var(--line); padding-top:14px;">Danger zone</span>
+      <div class="drawer__actions">
+        <button type="button" class="btn-mini btn-mini--bad" id="btn-delete-draft">Delete this draft permanently</button>
+        <span id="delete-draft-msg" class="rescreen-msg" aria-live="polite"></span>
       </div>
     </footer>
   </div>
