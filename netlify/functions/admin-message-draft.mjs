@@ -8,6 +8,12 @@
 // Sends from hello@america250cfc.org, Reply-To apply@america250cfc.org —
 // a reply lands in the existing admin inbox under the "apply" alias.
 //
+// Always appends a resume link (/apply/?resume=<token>, the same link
+// the apply form's own "copy my resume link" button generates) to the
+// message server-side, so it's guaranteed to be in every email this
+// endpoint sends regardless of what the admin types — not left to the
+// admin to remember to paste it in.
+//
 // Logged to outbound_replies with in_reply_to_id = null (nullable column
 // — this isn't a reply to any inbound_emails row) for the same audit
 // trail as inbox replies and applicant messages.
@@ -20,6 +26,7 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const ALLOWED_ORIGIN = "https://america250cfc.org";
+const SITE_ORIGIN = "https://america250cfc.org";
 const FROM_ALIAS = "hello";
 const FROM_ADDRESS = "hello@america250cfc.org";
 const FROM_HEADER = "America250 CFC <hello@america250cfc.org>";
@@ -96,6 +103,9 @@ export const handler = async (event) => {
   const recipient = (draft.email || fromDraftField || "").trim().toLowerCase();
   if (!EMAIL_RE.test(recipient)) return jsonResponse(422, { error: "no_valid_email" });
 
+  const resumeUrl = `${SITE_ORIGIN}/apply/?resume=${encodeURIComponent(token)}`;
+  const fullText = text + `\n\n— \nPick up right where you left off: ${resumeUrl}`;
+
   const resendRes = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
@@ -104,7 +114,7 @@ export const handler = async (event) => {
       to: [recipient],
       reply_to: REPLY_TO,
       subject,
-      text,
+      text: fullText,
       tags: [{ name: "category", value: "admin-draft-nudge" }],
     }),
   });
@@ -117,7 +127,7 @@ export const handler = async (event) => {
     from_address: FROM_ADDRESS,
     to_address: recipient,
     subject,
-    text_body: text,
+    text_body: fullText,
     status: resendRes.ok ? "sent" : "failed",
     resend_email_id: resendData.id || null,
     error_message: resendRes.ok ? null : JSON.stringify(resendData).slice(0, 1000),

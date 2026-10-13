@@ -981,7 +981,7 @@
     state.messageTarget = target;
     document.getElementById('message-context').textContent = target.context;
     document.getElementById('message-subject').value = target.subjectDefault;
-    document.getElementById('message-text').value = '';
+    document.getElementById('message-text').value = target.bodyDefault || '';
     messageMsg.textContent = '';
     messageMsg.className = 'invite-msg';
     messageModal.setAttribute('aria-hidden', 'false');
@@ -1578,12 +1578,18 @@
     if (!state.activeDraft || !state.activeDraft.email) return;
     var d = state.activeDraft;
     var f = draftFields(d);
+    var firstName = (f.lead_name || '').trim().split(/\s+/)[0] || 'there';
     openMessageModal({
       endpoint: '/.netlify/functions/admin-message-draft',
       idKey: 'token',
       idValue: d.token,
       context: 'To ' + (f.lead_name || 'applicant') + ' <' + d.email + '>',
       subjectDefault: 'Finish your America250 CFC application' + (f.proj_title ? ' — ' + f.proj_title : ''),
+      bodyDefault: 'Hi ' + firstName + ',\n\n' +
+        'We noticed you started an application to the America250 Community Futures Challenge but didn\'t get a chance to finish. ' +
+        'Your progress has been saved — click the secure link below to pick up right where you left off.\n\n' +
+        'If you have any questions, just reply to this email.\n\n' +
+        '— The America250 CFC team',
     });
   });
 })();
