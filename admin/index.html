@@ -252,8 +252,10 @@ function OptanonWrapper() { }
       <div class="filter-search">
         <input type="search" id="drafts-search-input" placeholder="Search by name, org, project, email…" autocomplete="off" />
       </div>
+      <button type="button" class="admin-judging__toggle" id="btn-remind-all-drafts">Remind all</button>
       <a class="admin-judging__toggle" id="btn-export-drafts" href="/.netlify/functions/admin-export-drafts" download>Export drafts</a>
       <button type="button" class="admin-judging__toggle" id="btn-toggle-drafts" aria-expanded="false" aria-controls="drafts-table-wrap">Show</button>
+      <span id="remind-all-msg" class="rescreen-msg" aria-live="polite"></span>
     </div>
   </div>
   <div id="drafts-table-wrap" hidden>

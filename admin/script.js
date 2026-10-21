@@ -1596,6 +1596,58 @@
     }
   });
 
+  // ---------- Remind all drafts with an email on file ----------
+  // Sends the same default reminder used by "Message about this draft" to
+  // every draft with an email, one at a time via the existing single-draft
+  // endpoint — no new backend needed, and each send still gets its own
+  // resume link and audit-log row from admin-message-draft.mjs.
+  var btnRemindAllDrafts = document.getElementById('btn-remind-all-drafts');
+  var remindAllMsg = document.getElementById('remind-all-msg');
+  function draftReminderDefaults(d) {
+    var f = draftFields(d);
+    var firstName = (f.lead_name || '').trim().split(/\s+/)[0] || 'there';
+    return {
+      subject: 'Finish your America250 CFC application' + (f.proj_title ? ' — ' + f.proj_title : ''),
+      text: 'Hi ' + firstName + ',\n\n' +
+        'We noticed you started an application to the America250 Community Futures Challenge but didn\'t get a chance to finish. ' +
+        'Your progress has been saved — click the secure link below to pick up right where you left off.\n\n' +
+        'If you have any questions, just reply to this email.\n\n' +
+        '— The America250 CFC team',
+    };
+  }
+  if (btnRemindAllDrafts) btnRemindAllDrafts.addEventListener('click', async function () {
+    if (!state.draftsLoaded) await fetchDrafts();
+    var targets = (state.drafts || []).filter(function (d) { return d.email && d.email.trim(); });
+    if (!targets.length) {
+      if (remindAllMsg) { remindAllMsg.textContent = 'No drafts have an email on file.'; remindAllMsg.className = 'rescreen-msg'; }
+      return;
+    }
+    var confirmMsg = 'Send a reminder email to ' + targets.length + ' draft applicant' + (targets.length === 1 ? '' : 's') +
+      ' with an email on file? This cannot be undone.';
+    if (!window.confirm(confirmMsg)) return;
+    btnRemindAllDrafts.disabled = true;
+    var sent = 0, failed = 0;
+    for (var i = 0; i < targets.length; i++) {
+      var d = targets[i];
+      if (remindAllMsg) { remindAllMsg.textContent = 'Sending ' + (i + 1) + ' of ' + targets.length + '…'; remindAllMsg.className = 'rescreen-msg'; }
+      var defaults = draftReminderDefaults(d);
+      try {
+        var res = await fetch('/.netlify/functions/admin-message-draft', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ token: d.token, subject: defaults.subject, text: defaults.text })
+        });
+        if (res.ok) sent++; else failed++;
+      } catch (err) {
+        failed++;
+      }
+    }
+    btnRemindAllDrafts.disabled = false;
+    if (remindAllMsg) {
+      remindAllMsg.textContent = 'Sent ' + sent + (failed ? ', ' + failed + ' failed' : '') + '.';
+      remindAllMsg.className = failed ? 'rescreen-msg is-err' : 'rescreen-msg is-ok';
+    }
+  });
+
   // ---------- Draft detail drawer ----------
   var draftDrawer = document.getElementById('draft-drawer');
   var draftDrawerScrim = document.getElementById('draft-drawer-scrim');
