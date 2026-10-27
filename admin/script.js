@@ -1456,6 +1456,7 @@
     var filtered = applyDraftFilters();
     if (draftsSub) {
       var draftsSubText = state.drafts.length + ' unsubmitted draft' + (state.drafts.length === 1 ? '' : 's');
+      if (state.draftsHiddenSubmitted) draftsSubText += ' · ' + state.draftsHiddenSubmitted + ' hidden (already submitted)';
       if (state.draftFilter === 'email') draftsSubText += ' · ' + filtered.length + ' with an email on file';
       if (state.draftSearch.trim()) draftsSubText += ' · ' + filtered.length + ' matching search';
       draftsSub.textContent = draftsSubText;
@@ -1500,6 +1501,7 @@
       if (!res.ok) throw new Error('Fetch failed: ' + res.status);
       var data = await res.json();
       state.drafts = data.drafts || [];
+      state.draftsHiddenSubmitted = data.hidden_submitted || 0;
       state.draftsLoaded = true;
       renderDrafts();
     } catch (err) {
@@ -1626,7 +1628,7 @@
       ' with an email on file? This cannot be undone.';
     if (!window.confirm(confirmMsg)) return;
     btnRemindAllDrafts.disabled = true;
-    var sent = 0, failed = 0;
+    var sent = 0, failed = 0, skipped = 0;
     for (var i = 0; i < targets.length; i++) {
       var d = targets[i];
       if (remindAllMsg) { remindAllMsg.textContent = 'Sending ' + (i + 1) + ' of ' + targets.length + '…'; remindAllMsg.className = 'rescreen-msg'; }
@@ -1636,14 +1638,15 @@
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ token: d.token, subject: defaults.subject, text: defaults.text })
         });
-        if (res.ok) sent++; else failed++;
+        // 409 = applicant has since submitted; the server refused to nudge them.
+        if (res.ok) sent++; else if (res.status === 409) skipped++; else failed++;
       } catch (err) {
         failed++;
       }
     }
     btnRemindAllDrafts.disabled = false;
     if (remindAllMsg) {
-      remindAllMsg.textContent = 'Sent ' + sent + (failed ? ', ' + failed + ' failed' : '') + '.';
+      remindAllMsg.textContent = 'Sent ' + sent + (skipped ? ', ' + skipped + ' skipped (already submitted)' : '') + (failed ? ', ' + failed + ' failed' : '') + '.';
       remindAllMsg.className = failed ? 'rescreen-msg is-err' : 'rescreen-msg is-ok';
     }
   });

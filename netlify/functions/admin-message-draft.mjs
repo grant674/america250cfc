@@ -17,6 +17,10 @@
 // Logged to outbound_replies with in_reply_to_id = null (nullable column
 // — this isn't a reply to any inbound_emails row) for the same audit
 // trail as inbox replies and applicant messages.
+//
+// Refuses (409 already_submitted) when the recipient already has a
+// submitted application, so a reminder — including one from "Remind all"
+// working off a stale list — can never prompt a duplicate submission.
 // ============================================================
 
 import { createHmac, timingSafeEqual } from "node:crypto";
@@ -54,6 +58,8 @@ function cookieValues(header, name) {
   return out;
 }
 function anyEq(c, e) { let f = false; for (const x of c) if (constantTimeEq(x, e)) f = true; return f; }
+// Escape LIKE wildcards so ilike is a case-insensitive exact match.
+function likeEscape(s) { return s.replace(/[\\%_]/g, (c) => "\\" + c); }
 function jsonResponse(statusCode, body) {
   return {
     statusCode,
@@ -102,6 +108,11 @@ export const handler = async (event) => {
     : "";
   const recipient = (draft.email || fromDraftField || "").trim().toLowerCase();
   if (!EMAIL_RE.test(recipient)) return jsonResponse(422, { error: "no_valid_email" });
+
+  const appRes = await fetch(`${SUPABASE_URL}/rest/v1/applications?lead_email=ilike.${encodeURIComponent(likeEscape(recipient))}&select=id&limit=1`, { headers: sb });
+  if (!appRes.ok) return jsonResponse(502, { error: "fetch_failed" });
+  const apps = await appRes.json();
+  if (Array.isArray(apps) && apps.length) return jsonResponse(409, { error: "already_submitted" });
 
   const resumeUrl = `${SITE_ORIGIN}/apply/?resume=${encodeURIComponent(token)}`;
   const fullText = text + `\n\n— \nPick up right where you left off: ${resumeUrl}`;

@@ -4,6 +4,12 @@
 // as the public apply form auto-saves in-progress work) so admins can see
 // who started an application but never submitted it, and reach out to
 // the ones who got far enough to leave an email address.
+//
+// Drafts whose email matches a submitted application are left out: that
+// person already applied, so a "finish your application" reminder would
+// only invite a duplicate. (New submissions delete their own draft in
+// submit-application.mjs; this also covers older drafts and anyone who
+// started a second draft on another device.)
 // ============================================================
 
 import { createHmac, timingSafeEqual } from "node:crypto";
@@ -31,6 +37,11 @@ function cookieValues(header, name) {
   return out;
 }
 function anyEq(c, e) { let f = false; for (const x of c) if (constantTimeEq(x, e)) f = true; return f; }
+function normEmail(e) { return typeof e === "string" ? e.trim().toLowerCase() : ""; }
+function draftEmail(d) {
+  const f = (d.data && d.data.fields) || {};
+  return normEmail(d.email) || normEmail(f.lead_email);
+}
 const noStore = { "Content-Type": "application/json", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY" };
 
 export const handler = async (event) => {
@@ -45,14 +56,21 @@ export const handler = async (event) => {
   url.searchParams.set("order", "updated_at.desc");
   url.searchParams.set("limit", "1000");
 
-  const res = await fetch(url, {
-    headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-    },
-  });
-  if (!res.ok) return { statusCode: 502, headers: noStore, body: JSON.stringify({ error: "fetch_failed" }) };
-  const rows = await res.json();
+  const sb = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` };
+  const appsUrl = new URL(`${SUPABASE_URL}/rest/v1/applications`);
+  appsUrl.searchParams.set("select", "lead_email");
+  appsUrl.searchParams.set("lead_email", "not.is.null");
+  appsUrl.searchParams.set("limit", "10000");
 
-  return { statusCode: 200, headers: noStore, body: JSON.stringify({ drafts: rows }) };
+  const [res, appsRes] = await Promise.all([fetch(url, { headers: sb }), fetch(appsUrl, { headers: sb })]);
+  if (!res.ok || !appsRes.ok) return { statusCode: 502, headers: noStore, body: JSON.stringify({ error: "fetch_failed" }) };
+  const rows = await res.json();
+  const submitted = new Set((await appsRes.json()).map((a) => normEmail(a.lead_email)).filter(Boolean));
+
+  const drafts = rows.filter((d) => !submitted.has(draftEmail(d)));
+  return {
+    statusCode: 200,
+    headers: noStore,
+    body: JSON.stringify({ drafts, hidden_submitted: rows.length - drafts.length }),
+  };
 };
