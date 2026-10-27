@@ -56,6 +56,8 @@ function csvCell(v) {
   return s;
 }
 
+function normEmail(e) { return typeof e === "string" ? e.trim().toLowerCase() : ""; }
+
 const ALLOWED_ORIGIN = "https://america250cfc.org";
 function originAllowed(event) {
   const headers = event.headers || {};
@@ -99,14 +101,21 @@ export const handler = async (event) => {
   url.searchParams.set("order", "updated_at.desc");
   url.searchParams.set("limit", "2000");
 
-  const res = await fetch(url, {
-    headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-    },
+  const sb = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` };
+  const appsUrl = new URL(`${SUPABASE_URL}/rest/v1/applications`);
+  appsUrl.searchParams.set("select", "lead_email");
+  appsUrl.searchParams.set("lead_email", "not.is.null");
+  appsUrl.searchParams.set("limit", "10000");
+
+  const [res, appsRes] = await Promise.all([fetch(url, { headers: sb }), fetch(appsUrl, { headers: sb })]);
+  if (!res.ok || !appsRes.ok) return { statusCode: 502, body: "fetch failed" };
+  // Same rule as admin-list-drafts.mjs: skip drafts from people who have
+  // since submitted an application.
+  const submitted = new Set((await appsRes.json()).map((a) => normEmail(a.lead_email)).filter(Boolean));
+  const drafts = (await res.json()).filter((d) => {
+    const f = (d.data && d.data.fields) || {};
+    return !submitted.has(normEmail(d.email) || normEmail(f.lead_email));
   });
-  if (!res.ok) return { statusCode: 502, body: "fetch failed" };
-  const drafts = await res.json();
 
   const lines = [FIELDS.join(",")];
   for (const d of drafts) {

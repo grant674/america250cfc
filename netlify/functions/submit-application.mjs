@@ -8,6 +8,11 @@
 // Direct anonymous inserts into `applications` are revoked at the DB,
 // so this Turnstile-gated path is the ONLY way to create an application —
 // stopping bot spam before it can trigger a Claude screening or an email.
+//
+// The form also sends its save-and-resume token (resume_token); once the
+// application is in, that application_drafts row is deleted so a submitted
+// application never lingers in the admin Drafts list (where it would get
+// a "finish your application" reminder and invite a duplicate submission).
 // ============================================================
 
 const SUPABASE_URL = "https://emhcsinxtxshdgiceofa.supabase.co";
@@ -124,5 +129,20 @@ export const handler = async (event) => {
   }
   const inserted = await res.json();
   const id = Array.isArray(inserted) && inserted[0] ? inserted[0].id : row.id;
+
+  // Best-effort: drop the now-submitted draft. A failure here doesn't fail
+  // the submission — admin-list-drafts also hides drafts whose email
+  // matches a submitted application.
+  const resumeToken = typeof parsed.resume_token === "string" ? parsed.resume_token : "";
+  if (UUID_RE.test(resumeToken)) {
+    await fetch(`${SUPABASE_URL}/rest/v1/application_drafts?token=eq.${encodeURIComponent(resumeToken)}`, {
+      method: "DELETE",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        Prefer: "return=minimal",
+      },
+    }).catch((err) => console.error("draft cleanup failed:", err?.message || err));
+  }
   return json(200, { ok: true, id });
 };

@@ -604,6 +604,11 @@
     // applicant their reference id immediately.
     var appId = newToken();
 
+    // Stop any pending auto-save so it can't re-create the server draft
+    // after submit-application deletes it.
+    if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+    if (serverTimer) { clearTimeout(serverTimer); serverTimer = null; }
+
     try {
       // 1) Verify (Cloudflare Turnstile) + insert the application via the
       //    server-side gateway. Direct anon inserts are revoked at the DB, so
@@ -613,7 +618,7 @@
       var insertRes = await fetch('/.netlify/functions/submit-application', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: payload, token: tsToken })
+        body: JSON.stringify({ payload: payload, token: tsToken, resume_token: resumeToken })
       });
       if (!insertRes.ok) {
         if (window.turnstile) { try { window.turnstile.reset(); } catch (e) {} }
@@ -688,7 +693,9 @@
     if (successPanel) successPanel.hidden = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    // Clear the draft and its resume token so a later application from this
+    // browser starts fresh instead of reusing the submitted one's token.
+    try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(TOKEN_KEY); } catch (e) {}
   });
 
   // ---------- Resume link (#8) ----------
