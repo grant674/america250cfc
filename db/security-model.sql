@@ -31,7 +31,10 @@ CREATE TABLE IF NOT EXISTS public.application_drafts (
   data       jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  expires_at timestamptz NOT NULL DEFAULT (now() + interval '60 days')
+  -- Drafts are kept through the end of the program (Sep 2026 – Dec 2027),
+  -- matching the privacy policy's application-data retention. (Was
+  -- now() + 60 days until 2026-10-30; existing rows were moved to this date.)
+  expires_at timestamptz NOT NULL DEFAULT '2028-01-01 00:00:00+00'::timestamptz
 );
 
 -- Email unsubscribe / suppression list. Written by the `unsubscribe` function
@@ -188,6 +191,7 @@ CREATE POLICY "upload_attachments_for_real_apps" ON storage.objects FOR INSERT T
 
 -- ---------------------------------------------------------------------------
 -- Scheduled cleanup (pg_cron): purge expired save-and-resume drafts daily.
+-- With the fixed expires_at above, this deletes nothing until 2028-01-01.
 -- ---------------------------------------------------------------------------
 -- CREATE EXTENSION IF NOT EXISTS pg_cron;
 -- SELECT cron.schedule('purge-expired-drafts', '0 3 * * *',
