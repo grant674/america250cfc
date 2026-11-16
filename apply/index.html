@@ -107,11 +107,14 @@ function OptanonWrapper() { }
 <section class="container">
   <form class="apply-form" id="apply-form" novalidate autocomplete="off">
 
-    <!-- Honeypot — hidden from humans (display:none + tabindex=-1 + aria-hidden).
-         Bots that auto-fill every field will fill this; we reject those submissions. -->
+    <!-- Honeypot — hidden from humans (off-screen + tabindex=-1 + aria-hidden).
+         Its name must not look like a real field: the old name
+         ("nn_organization_url") was autofilled with the org name by browsers
+         and password managers, which silently dropped real applications.
+         A filled value only flags the submission (Turnstile blocks bots). -->
     <div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;">
-      <label for="nn_organization_url">Don't fill this in if you're human</label>
-      <input type="text" id="nn_organization_url" name="nn_organization_url" tabindex="-1" autocomplete="off" />
+      <label for="nn_hp_check">Leave this empty</label>
+      <input type="text" id="nn_hp_check" name="nn_hp_check" tabindex="-1" autocomplete="off" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other" />
     </div>
 
 
@@ -503,6 +506,6 @@ function OptanonWrapper() { }
 </footer>
 
 <script src="/script.js?v=8" defer></script>
-<script src="/apply/script.js?v=11" defer></script>
+<script src="/apply/script.js?v=12" defer></script>
 </body>
 </html>

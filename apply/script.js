@@ -65,12 +65,18 @@
   })();
 
   // ---------- State load ----------
+  // Never saved to or restored from a draft: the honeypot (an autofilled
+  // value must not stick to every later visit) and the Turnstile token
+  // (single-use and short-lived; Turnstile issues a fresh one each visit).
+  var UNSAVED_FIELDS = ['nn_hp_check', 'nn_organization_url', 'cf-turnstile-response'];
+
   // Populate the form + step from a serialized draft object (localStorage or server).
   function applyDraftData(data) {
     if (!data || typeof data !== 'object') return;
     if (typeof data.step === 'number') current = Math.min(Math.max(data.step, 1), TOTAL_STEPS);
     if (typeof data.farthest === 'number') farthestSeen = Math.min(Math.max(data.farthest, 1), TOTAL_STEPS);
     Object.keys(data.fields || {}).forEach(function (name) {
+      if (UNSAVED_FIELDS.indexOf(name) !== -1) return;
       var el = form.elements[name];
       if (!el) return;
       if (el.type === 'checkbox') {
@@ -95,6 +101,7 @@
     Array.from(form.elements).forEach(function (el) {
       if (!el.name) return;
       if (el.type === 'submit' || el.type === 'button' || el.type === 'file') return;
+      if (UNSAVED_FIELDS.indexOf(el.name) !== -1) return;
       if (el.type === 'checkbox') {
         fields[el.name] = el.checked;
       } else if (el.type === 'radio') {
@@ -569,19 +576,12 @@
       return;
     }
 
-    // Honeypot — if this hidden field is filled, the submitter is a bot. Show
-    // a fake-success state so the bot thinks it worked, but never actually submit.
-    var honeypotEl = form.elements.nn_organization_url;
-    if (honeypotEl && honeypotEl.value) {
-      // Silent fake-success.
-      form.hidden = true;
-      document.querySelector('.apply-progress').hidden = true;
-      document.querySelector('.apply-header').hidden = true;
-      document.querySelector('.apply-jit').hidden = true;
-      if (successPanel) successPanel.hidden = false;
-      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
-      return;
-    }
+    // Honeypot — a filled value only flags the submission for review. It used
+    // to fake success and drop it, but browser/password-manager autofill fills
+    // hidden fields too, so real applicants were silently lost. Turnstile
+    // (verified server-side) is what actually stops bots.
+    var honeypotEl = form.elements.nn_hp_check;
+    var honeypotFilled = !!(honeypotEl && honeypotEl.value);
 
     // Require the Cloudflare Turnstile token. The widget injects a hidden
     // "cf-turnstile-response" field into the form once the visitor passes.
@@ -615,6 +615,7 @@
       //    this token-gated path is the only way to create an application.
       var payload = buildPayload();
       payload.id = appId;
+      if (honeypotFilled) payload.submission_source = 'web-honeypot';
       var insertRes = await fetch('/.netlify/functions/submit-application', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
