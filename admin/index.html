@@ -162,6 +162,24 @@ function OptanonWrapper() { }
     <h3>Inbox is empty for this filter.</h3>
     <p>Mail to <code>@america250cfc.org</code> will land here once Resend Inbound is wired up.</p>
   </div>
+  <div class="pager" id="inbox-pager" hidden>
+    <span class="pager__range" id="inbox-pager-range">—</span>
+    <div class="pager__controls">
+      <button type="button" class="btn-mini" id="inbox-pager-prev">‹ Prev</button>
+      <span class="pager__page" id="inbox-pager-page">Page 1</span>
+      <button type="button" class="btn-mini" id="inbox-pager-next">Next ›</button>
+      <label class="pager__size">
+        Show
+        <select id="inbox-pager-size">
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+          <option value="all">All</option>
+        </select>
+        per page
+      </label>
+    </div>
+  </div>
 </section>
 
 <section class="container admin-filter" aria-label="Filter">
@@ -469,6 +487,6 @@ function OptanonWrapper() { }
   </div>
 </div>
 
-<script src="/admin/script.js?v=9" defer></script>
+<script src="/admin/script.js?v=10" defer></script>
 </body>
 </html>

@@ -200,7 +200,7 @@ export const handler = async (event) => {
     const [scoresRes, judgesRes, inboxRes, outboundRes, auditRes] = await Promise.all([
       fetch(`${SUPABASE_URL}/rest/v1/scores?select=id,judge_id,application_id,dim_community,dim_innovation,dim_feasibility,dim_sustainability,dim_founder_team,total,status,submitted_at`, { headers: sbHeaders }),
       fetch(`${SUPABASE_URL}/rest/v1/judges?select=id,name,email,affiliation,active&order=name.asc`, { headers: sbHeaders }),
-      fetch(`${SUPABASE_URL}/rest/v1/inbound_emails?select=${inboxFields}&status=neq.archived&order=received_at.desc&limit=300`, { headers: sbHeaders }),
+      fetch(`${SUPABASE_URL}/rest/v1/inbound_emails?select=${inboxFields}&status=neq.archived&order=received_at.desc&limit=2000`, { headers: sbHeaders }),
       fetch(`${SUPABASE_URL}/rest/v1/outbound_replies?select=id,in_reply_to_id,from_alias,to_address,subject,sent_at,status&order=sent_at.desc&limit=300`, { headers: sbHeaders }),
       fetch(`${SUPABASE_URL}/rest/v1/audit_log?select=id,at,actor,action,target_table,target_id,before_data,after_data,notes&order=at.desc&limit=100`, { headers: sbHeaders }),
     ]);

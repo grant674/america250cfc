@@ -50,6 +50,8 @@
     inbox: [],
     inboxAlias: 'all',
     inboxStatus: 'all',
+    inboxPage: 1,
+    inboxPageSize: '25', // string mirrors <select> value; 'all' disables paging
     inboxActive: null,    // current open inbox message
     audit: [],
     page: 1,
@@ -583,13 +585,37 @@
     });
 
     var list = document.getElementById('inbox-list');
-    var rows = applyInboxFilters();
-    if (rows.length === 0) {
+    var inboxPager = document.getElementById('inbox-pager');
+    var filtered = applyInboxFilters();
+    var collapsed = list.classList.contains('is-collapsed');
+    if (filtered.length === 0) {
       list.innerHTML = '';
-      document.getElementById('inbox-empty').hidden = false;
+      document.getElementById('inbox-empty').hidden = collapsed;
+      if (inboxPager) inboxPager.hidden = true;
       return;
     }
     document.getElementById('inbox-empty').hidden = true;
+
+    // Pagination over the filtered set, same behaviour as the applications
+    // table: 'all' shows everything, otherwise clamp the page into range
+    // (a filter change or a poll can shrink the set under the current page).
+    var size = state.inboxPageSize === 'all' ? filtered.length : parseInt(state.inboxPageSize, 10) || 25;
+    var pageCount = Math.max(1, Math.ceil(filtered.length / size));
+    if (state.inboxPage > pageCount) state.inboxPage = pageCount;
+    if (state.inboxPage < 1) state.inboxPage = 1;
+    var start = (state.inboxPage - 1) * size;
+    var rows = filtered.slice(start, start + size);
+
+    if (inboxPager) {
+      inboxPager.hidden = collapsed;
+      document.getElementById('inbox-pager-range').textContent = state.inboxPageSize === 'all'
+        ? ('Showing all ' + filtered.length)
+        : ('Showing ' + (start + 1) + '–' + Math.min(start + size, filtered.length) + ' of ' + filtered.length);
+      document.getElementById('inbox-pager-page').textContent = 'Page ' + state.inboxPage + ' of ' + pageCount;
+      document.getElementById('inbox-pager-prev').disabled = state.inboxPage <= 1;
+      document.getElementById('inbox-pager-next').disabled = state.inboxPage >= pageCount;
+    }
+
     var html = rows.map(function (m) {
       var fromDisp = m.from_name ? m.from_name : (m.from_address || '—');
       var subj = m.subject || '(no subject)';
@@ -626,6 +652,7 @@
       document.querySelectorAll('[data-inbox-alias]').forEach(function (x) { x.classList.remove('is-active'); });
       b.classList.add('is-active');
       state.inboxAlias = b.getAttribute('data-inbox-alias');
+      state.inboxPage = 1;
       renderInbox();
     });
   });
@@ -634,6 +661,7 @@
       document.querySelectorAll('[data-inbox-status]').forEach(function (x) { x.classList.remove('is-active'); });
       b.classList.add('is-active');
       state.inboxStatus = b.getAttribute('data-inbox-status');
+      state.inboxPage = 1;
       renderInbox();
     });
   });
@@ -650,8 +678,33 @@
       emptyEl.hidden = collapsed || emptyEl.hidden;
       inboxToggle.textContent = collapsed ? 'Show' : 'Hide';
       inboxToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      renderInbox();
     });
   }
+
+  // Inbox pagination
+  var inboxPagerPrev = document.getElementById('inbox-pager-prev');
+  var inboxPagerNext = document.getElementById('inbox-pager-next');
+  var inboxPagerSize = document.getElementById('inbox-pager-size');
+  function scrollInboxIntoView() {
+    var sec = document.getElementById('admin-inbox');
+    if (sec) sec.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+  if (inboxPagerPrev) inboxPagerPrev.addEventListener('click', function () {
+    state.inboxPage -= 1;
+    renderInbox();
+    scrollInboxIntoView();
+  });
+  if (inboxPagerNext) inboxPagerNext.addEventListener('click', function () {
+    state.inboxPage += 1;
+    renderInbox();
+    scrollInboxIntoView();
+  });
+  if (inboxPagerSize) inboxPagerSize.addEventListener('change', function () {
+    state.inboxPageSize = inboxPagerSize.value;
+    state.inboxPage = 1;
+    renderInbox();
+  });
 
   // ---------- Inbox drawer + reply ----------
   var inboxDrawer = document.getElementById('inbox-drawer');
