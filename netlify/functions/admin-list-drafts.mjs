@@ -5,7 +5,8 @@
 // who started an application but never submitted it, and reach out to
 // the ones who got far enough to leave an email address.
 //
-// Drafts whose email matches a submitted application are left out: that
+// Drafts whose email, EIN or organization name matches a submitted
+// application are left out: that
 // person already applied, so a "finish your application" reminder would
 // only invite a duplicate. (New submissions delete their own draft in
 // submit-application.mjs; this also covers older drafts and anyone who
@@ -38,9 +39,29 @@ function cookieValues(header, name) {
 }
 function anyEq(c, e) { let f = false; for (const x of c) if (constantTimeEq(x, e)) f = true; return f; }
 function normEmail(e) { return typeof e === "string" ? e.trim().toLowerCase() : ""; }
-function draftEmail(d) {
+// EIN digits and a loose organization name ("The Foo Foundation, Inc." ->
+// "foofoundation"), so a draft counts as submitted when its organization
+// already applied under a different email.
+function normEin(v) { const d = typeof v === "string" ? v.replace(/\D/g, "") : ""; return d.length === 9 ? d : ""; }
+function normOrg(v) {
+  return typeof v === "string"
+    ? v.toLowerCase().replace(/\b(the|inc|incorporated|llc|corp|corporation|co|ltd)\b/g, "").replace(/[^a-z0-9]/g, "")
+    : "";
+}
+function submittedIndex(apps) {
+  const idx = { email: new Set(), ein: new Set(), org: new Set() };
+  for (const a of apps) {
+    const e = normEmail(a.lead_email), n = normEin(a.org_ein), o = normOrg(a.org_name);
+    if (e) idx.email.add(e);
+    if (n) idx.ein.add(n);
+    if (o.length >= 4) idx.org.add(o);
+  }
+  return idx;
+}
+function draftSubmitted(d, idx) {
   const f = (d.data && d.data.fields) || {};
-  return normEmail(d.email) || normEmail(f.lead_email);
+  const e = normEmail(d.email) || normEmail(f.lead_email), n = normEin(f.org_ein), o = normOrg(f.org_name);
+  return (e && idx.email.has(e)) || (n && idx.ein.has(n)) || (o.length >= 4 && idx.org.has(o));
 }
 const noStore = { "Content-Type": "application/json", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY" };
 
@@ -58,16 +79,15 @@ export const handler = async (event) => {
 
   const sb = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` };
   const appsUrl = new URL(`${SUPABASE_URL}/rest/v1/applications`);
-  appsUrl.searchParams.set("select", "lead_email");
-  appsUrl.searchParams.set("lead_email", "not.is.null");
+  appsUrl.searchParams.set("select", "lead_email,org_ein,org_name");
   appsUrl.searchParams.set("limit", "10000");
 
   const [res, appsRes] = await Promise.all([fetch(url, { headers: sb }), fetch(appsUrl, { headers: sb })]);
   if (!res.ok || !appsRes.ok) return { statusCode: 502, headers: noStore, body: JSON.stringify({ error: "fetch_failed" }) };
   const rows = await res.json();
-  const submitted = new Set((await appsRes.json()).map((a) => normEmail(a.lead_email)).filter(Boolean));
+  const submitted = submittedIndex(await appsRes.json());
 
-  const drafts = rows.filter((d) => !submitted.has(draftEmail(d)));
+  const drafts = rows.filter((d) => !draftSubmitted(d, submitted));
   return {
     statusCode: 200,
     headers: noStore,

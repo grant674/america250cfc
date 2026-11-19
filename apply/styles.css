@@ -668,3 +668,27 @@
   color: var(--fg-65);
   min-height: 1.2em;
 }
+
+/* ---------- Draft conflict notice ----------
+   Pinned to the bottom of the screen, since the person may be deep in the
+   form when another device's save is detected. */
+.draft-conflict {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  width: min(640px, calc(100% - 32px));
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  background: var(--c-white);
+  border: 1px solid var(--line-strong);
+  border-left: 4px solid var(--c-red);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+}
+.draft-conflict[hidden] { display: none; }
+.draft-conflict__text { margin: 0; font-family: var(--font); font-size: 14px; line-height: 1.5; color: var(--fg); }
+.draft-conflict__actions { display: flex; flex-wrap: wrap; gap: 8px; }

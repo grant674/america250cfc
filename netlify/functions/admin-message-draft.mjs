@@ -18,9 +18,10 @@
 // — this isn't a reply to any inbound_emails row) for the same audit
 // trail as inbox replies and applicant messages.
 //
-// Refuses (409 already_submitted) when the recipient already has a
-// submitted application, so a reminder — including one from "Remind all"
-// working off a stale list — can never prompt a duplicate submission.
+// Refuses (409 already_submitted) when the recipient, or their
+// organization by EIN or name, already has a submitted application, so a
+// reminder — including one from "Remind all" working off a stale list —
+// can never prompt a duplicate submission.
 // ============================================================
 
 import { createHmac, timingSafeEqual } from "node:crypto";
@@ -58,8 +59,31 @@ function cookieValues(header, name) {
   return out;
 }
 function anyEq(c, e) { let f = false; for (const x of c) if (constantTimeEq(x, e)) f = true; return f; }
-// Escape LIKE wildcards so ilike is a case-insensitive exact match.
-function likeEscape(s) { return s.replace(/[\\%_]/g, (c) => "\\" + c); }
+function normEmail(e) { return typeof e === "string" ? e.trim().toLowerCase() : ""; }
+// EIN digits and a loose organization name ("The Foo Foundation, Inc." ->
+// "foofoundation"), so a draft counts as submitted when its organization
+// already applied under a different email.
+function normEin(v) { const d = typeof v === "string" ? v.replace(/\D/g, "") : ""; return d.length === 9 ? d : ""; }
+function normOrg(v) {
+  return typeof v === "string"
+    ? v.toLowerCase().replace(/\b(the|inc|incorporated|llc|corp|corporation|co|ltd)\b/g, "").replace(/[^a-z0-9]/g, "")
+    : "";
+}
+function submittedIndex(apps) {
+  const idx = { email: new Set(), ein: new Set(), org: new Set() };
+  for (const a of apps) {
+    const e = normEmail(a.lead_email), n = normEin(a.org_ein), o = normOrg(a.org_name);
+    if (e) idx.email.add(e);
+    if (n) idx.ein.add(n);
+    if (o.length >= 4) idx.org.add(o);
+  }
+  return idx;
+}
+function draftSubmitted(d, idx) {
+  const f = (d.data && d.data.fields) || {};
+  const e = normEmail(d.email) || normEmail(f.lead_email), n = normEin(f.org_ein), o = normOrg(f.org_name);
+  return (e && idx.email.has(e)) || (n && idx.ein.has(n)) || (o.length >= 4 && idx.org.has(o));
+}
 function jsonResponse(statusCode, body) {
   return {
     statusCode,
@@ -109,10 +133,12 @@ export const handler = async (event) => {
   const recipient = (draft.email || fromDraftField || "").trim().toLowerCase();
   if (!EMAIL_RE.test(recipient)) return jsonResponse(422, { error: "no_valid_email" });
 
-  const appRes = await fetch(`${SUPABASE_URL}/rest/v1/applications?lead_email=ilike.${encodeURIComponent(likeEscape(recipient))}&select=id&limit=1`, { headers: sb });
+  // Refuse if this person or their organization (by EIN or name) already applied.
+  const appRes = await fetch(`${SUPABASE_URL}/rest/v1/applications?select=lead_email,org_ein,org_name&limit=10000`, { headers: sb });
   if (!appRes.ok) return jsonResponse(502, { error: "fetch_failed" });
-  const apps = await appRes.json();
-  if (Array.isArray(apps) && apps.length) return jsonResponse(409, { error: "already_submitted" });
+  if (draftSubmitted({ email: recipient, data: draft.data }, submittedIndex(await appRes.json()))) {
+    return jsonResponse(409, { error: "already_submitted" });
+  }
 
   const resumeUrl = `${SITE_ORIGIN}/apply/?resume=${encodeURIComponent(token)}`;
   const fullText = text + `\n\n— \nPick up right where you left off: ${resumeUrl}`;

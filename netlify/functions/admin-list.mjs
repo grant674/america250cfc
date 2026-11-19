@@ -117,7 +117,7 @@ export const handler = async (event) => {
     "elig_age", "elig_audience", "elig_phase", "elig_scope", "elig_coi", "elig_nonprofit",
     "legal_terms", "legal_attribution",
     "status", "ai_screening_result", "ai_screening_reasons", "ai_screening_at",
-    "submission_source", "user_agent",
+    "submission_source", "user_agent", "judge_notes",
   ].join(",");
 
   const url = new URL(`${SUPABASE_URL}/rest/v1/applications`);

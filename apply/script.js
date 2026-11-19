@@ -126,15 +126,51 @@
     }, 350);
   }
   // Server-side draft sync (#8) — longer debounce so we don't hammer the API.
+  // Each save names the server version this page last loaded or saved
+  // (`base`). If someone else saved the same draft since — a second device
+  // or a helper using the resume link — the server refuses (409) instead of
+  // overwriting their answers wholesale, and the page asks which copy to keep.
+  var serverVersion = null;   // updated_at of the server draft this page is based on
+  var draftConflict = false;  // true once the server reported a newer copy
   var serverTimer = null;
+  function postDraft(opts) {
+    opts = opts || {};
+    if (draftConflict && !opts.force) return Promise.resolve();
+    var body = { token: resumeToken, data: serialize(), base: serverVersion };
+    if (opts.force) body.force = true;
+    return fetch('/.netlify/functions/apply-draft', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (res) {
+        if (r.status === 409) { showDraftConflict(); return; }
+        if (r.ok && res && res.updated_at) serverVersion = res.updated_at;
+      });
+    }).catch(function () { /* offline / non-fatal — localStorage still holds it */ });
+  }
   function scheduleServerSave() {
     if (serverTimer) clearTimeout(serverTimer);
-    serverTimer = setTimeout(function () {
-      fetch('/.netlify/functions/apply-draft', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: resumeToken, data: serialize() })
-      }).catch(function () { /* offline / non-fatal — localStorage still holds it */ });
-    }, 2500);
+    serverTimer = setTimeout(postDraft, 2500);
+  }
+
+  var conflictEl = document.getElementById('draft-conflict');
+  function showDraftConflict() {
+    draftConflict = true;
+    if (conflictEl) conflictEl.hidden = false;
+  }
+  if (conflictEl) {
+    conflictEl.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-conflict]');
+      if (!b) return;
+      if (b.getAttribute('data-conflict') === 'load') {
+        // Reload from the server copy (the resume link loads it ahead of this browser's copy).
+        location.href = location.pathname + '?resume=' + encodeURIComponent(resumeToken);
+      } else {
+        draftConflict = false;
+        conflictEl.hidden = true;
+        postDraft({ force: true });
+      }
+    });
   }
   var savedTimer = null;
   function showSavedBadge() {
@@ -144,6 +180,12 @@
     if (savedTimer) clearTimeout(savedTimer);
     savedTimer = setTimeout(function () { savedBadge.classList.remove('is-fresh'); }, 1200);
   }
+
+  var videoInput = form.elements.proj_video_url;
+  if (videoInput) videoInput.addEventListener('blur', function () {
+    var v = videoInput.value.trim();
+    if (v && !/^https?:\/\//i.test(v)) { videoInput.value = 'https://' + v; scheduleSave(); }
+  });
 
   form.addEventListener('input', scheduleSave);
   form.addEventListener('change', scheduleSave);
@@ -250,6 +292,24 @@
     });
   }
 
+  // A link to one specific video (not just a site's home page). Checked here
+  // only: the field is optional, and a server-side rejection would fail the
+  // whole submission for a page loaded before this check existed.
+  var VIDEO_RE = /^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=[\w-]{6,}|shorts\/[\w-]{6,}|embed\/[\w-]{6,}|live\/[\w-]{6,})|youtu\.be\/[\w-]{6,}|vimeo\.com\/(?:[\w-]+\/)*\d{5,}(?:\/\w+)?|player\.vimeo\.com\/video\/\d{5,}|loom\.com\/(?:share|embed)\/[\w-]{10,})(?:[\/?#&].*)?$/i;
+
+  // Checks the browser's own validation can't express: a minimum length on
+  // long answers (data-minlength; native minlength skips values restored
+  // from a draft) and the video-link format.
+  function applyCustomChecks(el) {
+    if (typeof el.setCustomValidity !== 'function') return;
+    var v = (el.value || '').trim();
+    var msg = '';
+    var min = parseInt(el.getAttribute('data-minlength') || '', 10);
+    if (min && v && v.length < min) msg = 'Please write at least ' + min + ' characters.';
+    if (el.name === 'proj_video_url' && v && !VIDEO_RE.test(v)) msg = 'Use the link to one specific Vimeo, YouTube or Loom video.';
+    el.setCustomValidity(msg);
+  }
+
   function validateStep(n) {
     var firstInvalid = null;
     var fields = fieldsForStep(n);
@@ -276,10 +336,17 @@
 
     fields.forEach(function (el) {
       if (!el.willValidate) return;
+      applyCustomChecks(el);
       if (!el.checkValidity()) {
         el.classList.add('is-error');
         var fw = el.closest('.field');
         if (fw) fw.classList.add('is-error');
+        if (el.validity.customError) {
+          var err = document.createElement('span');
+          err.className = 'field__error';
+          err.textContent = el.validationMessage;
+          el.parentElement.appendChild(err);
+        }
         if (!firstInvalid) firstInvalid = el;
       }
     });
@@ -708,10 +775,7 @@
     resumeBtn.addEventListener('click', function () {
       var url = resumeUrl();
       // Force an immediate server save so the link works the instant it's shared.
-      fetch('/.netlify/functions/apply-draft', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: resumeToken, data: serialize() })
-      }).catch(function () {});
+      postDraft();
       function show(msg) { if (resumeMsg) resumeMsg.textContent = msg; }
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(function () { show('Link copied — open it on any device to pick up where you left off.'); })
@@ -761,20 +825,32 @@
   })();
 
   // ---------- Boot ----------
-  // If the URL carries a resume token, prefer the server-stored draft so the
-  // application can continue on a different device. Otherwise use localStorage.
+  // Always check the server copy of this draft so saves know which version
+  // they build on. With a resume link the server copy wins; otherwise the
+  // newer of the server copy and this browser's copy is shown.
   var urlResume = null;
   try { urlResume = new URLSearchParams(location.search).get('resume'); } catch (e) {}
   function finishBoot() { showStep(current, { silent: true }); checkEligibility(); updateResumeLink(); }
-  if (urlResume && TOKEN_RE.test(urlResume)) {
+  var fromLink = !!(urlResume && TOKEN_RE.test(urlResume));
+  if (fromLink) {
     resumeToken = urlResume;
     try { localStorage.setItem(TOKEN_KEY, urlResume); } catch (e) {}
-    fetch('/.netlify/functions/apply-draft?token=' + encodeURIComponent(urlResume))
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (res) { if (res && res.data) applyDraftData(res.data); else loadDraft(); finishBoot(); })
-      .catch(function () { loadDraft(); finishBoot(); });
-  } else {
-    loadDraft();
-    finishBoot();
   }
+  function localDraft() {
+    try { var raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+  }
+  fetch('/.netlify/functions/apply-draft?token=' + encodeURIComponent(resumeToken))
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (res) {
+      var local = localDraft();
+      if (res && res.data) {
+        serverVersion = res.updated_at || null;
+        var serverNewer = !local || (res.data.savedAt || 0) >= (local.savedAt || 0);
+        applyDraftData(fromLink || serverNewer ? res.data : local);
+      } else if (local) {
+        applyDraftData(local);
+      }
+      finishBoot();
+    })
+    .catch(function () { loadDraft(); finishBoot(); });
 })();

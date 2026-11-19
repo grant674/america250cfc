@@ -388,6 +388,20 @@
         '</dl>',
       '</section>',
 
+      '<section class="drawer__section admin-edit">',
+        '<h3>Admin edits</h3>',
+        '<label class="admin-edit__field"><span>Lead applicant email</span>',
+          '<input type="email" id="edit-lead-email" maxlength="254" value="', escHtml(r.lead_email || ''), '" />',
+        '</label>',
+        '<label class="admin-edit__field"><span>Note for judges <em>(judges see this beside the application)</em></span>',
+          '<textarea id="edit-judge-notes" rows="3" maxlength="4000">', escHtml(r.judge_notes || ''), '</textarea>',
+        '</label>',
+        '<div class="admin-edit__actions">',
+          '<button type="button" class="btn-mini" id="btn-save-details">Save changes</button>',
+          '<span class="rescreen-msg" id="save-details-msg" aria-live="polite"></span>',
+        '</div>',
+      '</section>',
+
       '<section class="drawer__section">',
         '<h3>Organization</h3>',
         '<dl>',
@@ -982,10 +996,25 @@
       to_override: String(fd.get('to') || '').trim().toLowerCase(),
     };
     if (!payload.subject || !payload.text || !payload.to_override) {
-      replyMsg.textContent = 'All fields required.';
+      replyMsg.textContent = 'To, subject and message are required.';
       replyMsg.className = 'invite-msg is-err';
       return;
     }
+    // CC: send-reply drops addresses it can't parse, so check them here and
+    // say which ones are wrong rather than sending without them.
+    var ccList = String(fd.get('cc') || '').split(/[;,\s]+/).map(function (s) { return s.trim().toLowerCase(); }).filter(Boolean);
+    var badCc = ccList.filter(function (s) { return !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s); });
+    if (badCc.length) {
+      replyMsg.textContent = 'Check the CC address' + (badCc.length > 1 ? 'es' : '') + ': ' + badCc.join(', ');
+      replyMsg.className = 'invite-msg is-err';
+      return;
+    }
+    if (ccList.length > 10) {
+      replyMsg.textContent = 'CC can have up to 10 addresses.';
+      replyMsg.className = 'invite-msg is-err';
+      return;
+    }
+    if (ccList.length) payload.cc = ccList;
     replySubmit.disabled = true;
     replyMsg.textContent = 'Sending…';
     replyMsg.className = 'invite-msg';
@@ -1010,6 +1039,40 @@
       replyMsg.className = 'invite-msg is-err';
     } finally {
       replySubmit.disabled = false;
+    }
+  });
+
+  // Admin edits (lead email, note for judges) — saved through admin-update,
+  // which records each change in the audit log.
+  drawerBody.addEventListener('click', async function (e) {
+    var btn = e.target.closest('#btn-save-details');
+    if (!btn || !state.activeRow) return;
+    var r = state.activeRow;
+    var msg = document.getElementById('save-details-msg');
+    var email = document.getElementById('edit-lead-email').value.trim();
+    var notes = document.getElementById('edit-judge-notes').value.trim();
+    var body = { id: r.id };
+    if (email !== (r.lead_email || '')) body.lead_email = email;
+    if (notes !== (r.judge_notes || '')) body.judge_notes = notes;
+    if (!('lead_email' in body) && !('judge_notes' in body)) { msg.textContent = 'No changes to save.'; msg.className = 'rescreen-msg'; return; }
+    btn.disabled = true;
+    msg.textContent = 'Saving…'; msg.className = 'rescreen-msg';
+    try {
+      var res = await fetch(UPDATE_ENDPOINT, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify(body),
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+      if ('lead_email' in body) r.lead_email = email;
+      if ('judge_notes' in body) r.judge_notes = notes || null;
+      msg.textContent = 'Saved.'; msg.className = 'rescreen-msg is-ok';
+      render();
+    } catch (err) {
+      msg.textContent = err.message === 'invalid email' ? 'That email address doesn\'t look right.' : 'Save failed. Try again.';
+      msg.className = 'rescreen-msg is-err';
+    } finally {
+      btn.disabled = false;
     }
   });
 

@@ -30,7 +30,7 @@ function OptanonWrapper() { }
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="/styles.css?v=15" />
-<link rel="stylesheet" href="/admin/styles.css?v=7" />
+<link rel="stylesheet" href="/admin/styles.css?v=9" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="admin-body">
@@ -463,6 +463,10 @@ function OptanonWrapper() { }
         <input type="email" name="to" id="reply-to" required maxlength="320" />
       </label>
       <label class="invite-label">
+        CC <span class="invite-label__hint">(optional — separate addresses with commas, up to 10)</span>
+        <input type="text" name="cc" id="reply-cc" maxlength="2000" autocomplete="off" placeholder="name@example.org, other@example.org" />
+      </label>
+      <label class="invite-label">
         Subject
         <input type="text" name="subject" id="reply-subject" required maxlength="500" />
       </label>
@@ -503,6 +507,6 @@ function OptanonWrapper() { }
   </div>
 </div>
 
-<script src="/admin/script.js?v=11" defer></script>
+<script src="/admin/script.js?v=12" defer></script>
 </body>
 </html>
