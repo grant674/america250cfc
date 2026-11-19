@@ -7,6 +7,9 @@
    blue plus a single neutral green for "passed" affordances.
    ============================================================ */
 
+/* The hidden attribute must win over component display rules (flex/grid). */
+[hidden] { display: none !important; }
+
 .admin-body { background: var(--c-gray); }
 
 /* Semantic green for "passed/ok" — admin-only, restrained use. */
@@ -1431,3 +1434,14 @@
 .inbox-item { display: flex; align-items: center; gap: 10px; }
 .inbox-item .inbox-row { flex: 1; min-width: 0; }
 .inbox-item .inbox-cb { flex: none; }
+
+/* Admin edits section in the application drawer (lead email, note for judges). */
+.admin-edit__field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; font-family: var(--font); font-size: 13px; color: var(--fg-65); }
+.admin-edit__field em { font-style: normal; color: var(--fg-45, rgba(0,0,0,0.45)); }
+.admin-edit__field input, .admin-edit__field textarea {
+  font: inherit; font-size: 14px; color: var(--c-black); padding: 8px 10px;
+  border: 1px solid var(--line-strong, rgba(0,0,0,0.2)); border-radius: 6px; background: #fff; width: 100%; box-sizing: border-box;
+}
+.admin-edit__field textarea { resize: vertical; min-height: 72px; }
+.admin-edit__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.invite-label__hint { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--fg-45, rgba(0,0,0,0.45)); }

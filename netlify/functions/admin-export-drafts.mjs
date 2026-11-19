@@ -57,6 +57,30 @@ function csvCell(v) {
 }
 
 function normEmail(e) { return typeof e === "string" ? e.trim().toLowerCase() : ""; }
+// EIN digits and a loose organization name ("The Foo Foundation, Inc." ->
+// "foofoundation"), so a draft counts as submitted when its organization
+// already applied under a different email.
+function normEin(v) { const d = typeof v === "string" ? v.replace(/\D/g, "") : ""; return d.length === 9 ? d : ""; }
+function normOrg(v) {
+  return typeof v === "string"
+    ? v.toLowerCase().replace(/\b(the|inc|incorporated|llc|corp|corporation|co|ltd)\b/g, "").replace(/[^a-z0-9]/g, "")
+    : "";
+}
+function submittedIndex(apps) {
+  const idx = { email: new Set(), ein: new Set(), org: new Set() };
+  for (const a of apps) {
+    const e = normEmail(a.lead_email), n = normEin(a.org_ein), o = normOrg(a.org_name);
+    if (e) idx.email.add(e);
+    if (n) idx.ein.add(n);
+    if (o.length >= 4) idx.org.add(o);
+  }
+  return idx;
+}
+function draftSubmitted(d, idx) {
+  const f = (d.data && d.data.fields) || {};
+  const e = normEmail(d.email) || normEmail(f.lead_email), n = normEin(f.org_ein), o = normOrg(f.org_name);
+  return (e && idx.email.has(e)) || (n && idx.ein.has(n)) || (o.length >= 4 && idx.org.has(o));
+}
 
 const ALLOWED_ORIGIN = "https://america250cfc.org";
 function originAllowed(event) {
@@ -103,19 +127,15 @@ export const handler = async (event) => {
 
   const sb = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` };
   const appsUrl = new URL(`${SUPABASE_URL}/rest/v1/applications`);
-  appsUrl.searchParams.set("select", "lead_email");
-  appsUrl.searchParams.set("lead_email", "not.is.null");
+  appsUrl.searchParams.set("select", "lead_email,org_ein,org_name");
   appsUrl.searchParams.set("limit", "10000");
 
   const [res, appsRes] = await Promise.all([fetch(url, { headers: sb }), fetch(appsUrl, { headers: sb })]);
   if (!res.ok || !appsRes.ok) return { statusCode: 502, body: "fetch failed" };
   // Same rule as admin-list-drafts.mjs: skip drafts from people who have
   // since submitted an application.
-  const submitted = new Set((await appsRes.json()).map((a) => normEmail(a.lead_email)).filter(Boolean));
-  const drafts = (await res.json()).filter((d) => {
-    const f = (d.data && d.data.fields) || {};
-    return !submitted.has(normEmail(d.email) || normEmail(f.lead_email));
-  });
+  const submitted = submittedIndex(await appsRes.json());
+  const drafts = (await res.json()).filter((d) => !draftSubmitted(d, submitted));
 
   const lines = [FIELDS.join(",")];
   for (const d of drafts) {

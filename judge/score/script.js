@@ -110,6 +110,7 @@
       'proj_budget_total','proj_budget_raised','proj_use_of_funds','proj_video_url',
       'impact_community','impact_innovation','impact_feasibility','impact_sustainability','impact_founder_team',
       'elig_age','elig_audience','elig_phase','elig_scope','elig_coi','elig_nonprofit',
+      'judge_notes',
     ].join(',');
     var res = await sbFetch(
       '/rest/v1/applications?id=eq.' + encodeURIComponent(state.appId) + '&select=' + fields
@@ -205,6 +206,7 @@
       : (a.proj_video_url ? escHtml(a.proj_video_url) : '—');
 
     var html = [
+      a.judge_notes ? '<section class="score-read__sec score-read__note"><h3 class="score-read__sec-h">Note from the program team</h3><p>' + escHtml(a.judge_notes) + '</p></section>' : '',
       '<section class="score-read__sec">',
         '<h3 class="score-read__sec-h">Project</h3>',
         '<dl>',

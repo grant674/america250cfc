@@ -101,6 +101,58 @@ function originAllowed(event) {
   return true; // no Origin & no Referer → not a browser request, cookie check still gates
 }
 
+// Admin edits other than status: the lead applicant's email (e.g. an
+// applicant wrote in with a corrected address) and notes shown to judges.
+// Each change is written to audit_log with the old and new values.
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
+const MAX_NOTES = 4000;
+async function updateDetails(id, payload) {
+  const patch = {};
+  if ("lead_email" in payload) {
+    const email = String(payload.lead_email || "").trim();
+    if (!EMAIL_RE.test(email) || email.length > 254) {
+      return { statusCode: 400, headers: noStoreHeaders(), body: JSON.stringify({ error: "invalid email" }) };
+    }
+    patch.lead_email = email;
+  }
+  if ("judge_notes" in payload) {
+    const notes = payload.judge_notes == null ? "" : String(payload.judge_notes).trim();
+    if (notes.length > MAX_NOTES) {
+      return { statusCode: 400, headers: noStoreHeaders(), body: JSON.stringify({ error: "notes too long" }) };
+    }
+    patch.judge_notes = notes || null;
+  }
+  const sb = { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` };
+  const cols = Object.keys(patch).join(",");
+  const lookup = await fetch(`${SUPABASE_URL}/rest/v1/applications?id=eq.${encodeURIComponent(id)}&select=${cols}`, { headers: sb });
+  const before = lookup.ok ? (await lookup.json())[0] : null;
+  if (!before) return { statusCode: 404, headers: noStoreHeaders(), body: JSON.stringify({ error: "not found" }) };
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/applications?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { ...sb, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("Supabase update failed:", res.status, errText);
+    return { statusCode: 502, headers: noStoreHeaders(), body: JSON.stringify({ error: "update failed" }) };
+  }
+  await fetch(`${SUPABASE_URL}/rest/v1/audit_log`, {
+    method: "POST",
+    headers: { ...sb, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify({
+      actor: "admin",
+      action: "lead_email" in patch ? "contact_update" : "judge_note",
+      target_table: "applications",
+      target_id: id,
+      before_data: before,
+      after_data: patch,
+    }),
+  }).catch((err) => console.error("audit_log insert failed (non-fatal):", err));
+  return { statusCode: 200, headers: noStoreHeaders(), body: JSON.stringify({ ok: true, id, ...patch }) };
+}
+
 export const handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, headers: noStoreHeaders(), body: JSON.stringify({ error: "method not allowed" }) };
@@ -127,6 +179,9 @@ export const handler = async (event) => {
   const { id, status } = payload;
   if (!id || typeof id !== "string" || !UUID_RE.test(id)) {
     return { statusCode: 400, headers: noStoreHeaders(), body: JSON.stringify({ error: "invalid id" }) };
+  }
+  if (!("status" in payload) && ("lead_email" in payload || "judge_notes" in payload)) {
+    return updateDetails(id, payload);
   }
   if (!ALLOWED_STATUSES.has(status)) {
     return { statusCode: 400, headers: noStoreHeaders(), body: JSON.stringify({ error: "invalid status" }) };

@@ -475,3 +475,7 @@
   gap: 10px;
   justify-content: flex-end;
 }
+
+/* Note from the program team (admin-written judge_notes), shown above the project. */
+.score-read__note { padding: 14px 16px; background: var(--c-gray, #F1F1F2); border-left: 3px solid var(--c-blue, #1B459B); border-radius: 6px; }
+.score-read__note p { margin: 0; font-size: 15px; line-height: 1.55; }
