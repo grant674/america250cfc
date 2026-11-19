@@ -30,7 +30,7 @@ function OptanonWrapper() { }
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="/styles.css?v=15" />
-<link rel="stylesheet" href="/admin/styles.css?v=6" />
+<link rel="stylesheet" href="/admin/styles.css?v=7" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="admin-body">
@@ -155,7 +155,23 @@ function OptanonWrapper() { }
       <button type="button" class="inbox-pill inbox-pill--status" data-inbox-status="read">Read</button>
       <button type="button" class="inbox-pill inbox-pill--status" data-inbox-status="replied">Replied</button>
       <button type="button" class="inbox-pill inbox-pill--status" data-inbox-status="spam">Spam</button>
+      <button type="button" class="inbox-pill inbox-pill--status" data-inbox-status="archived">Archived</button>
     </div>
+  </div>
+  <div class="inbox-select" id="inbox-select">
+    <label class="inbox-select__all"><input type="checkbox" id="inbox-select-all" /> Select all on this page</label>
+    <div class="bulk-bar" id="inbox-bulk-bar" hidden>
+      <span class="bulk-bar__count" id="inbox-bulk-count">0 selected</span>
+      <div class="bulk-bar__actions">
+        <button type="button" class="btn-mini" data-inbox-bulk="mark_read">Mark read</button>
+        <button type="button" class="btn-mini" data-inbox-bulk="mark_unread">Mark unread</button>
+        <button type="button" class="btn-mini" data-inbox-bulk="archive">Archive</button>
+        <button type="button" class="btn-mini" data-inbox-bulk="unarchive" hidden>Restore to inbox</button>
+        <button type="button" class="btn-mini" data-inbox-bulk="mark_spam">Mark spam</button>
+        <button type="button" class="btn-mini" id="inbox-bulk-clear">Clear</button>
+      </div>
+    </div>
+    <span class="rescreen-msg" id="inbox-bulk-msg" aria-live="polite"></span>
   </div>
   <ul class="inbox-list" id="inbox-list"></ul>
   <div class="inbox-empty" id="inbox-empty" hidden>
@@ -487,6 +503,6 @@ function OptanonWrapper() { }
   </div>
 </div>
 
-<script src="/admin/script.js?v=10" defer></script>
+<script src="/admin/script.js?v=11" defer></script>
 </body>
 </html>

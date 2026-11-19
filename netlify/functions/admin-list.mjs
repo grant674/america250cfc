@@ -200,7 +200,7 @@ export const handler = async (event) => {
     const [scoresRes, judgesRes, inboxRes, outboundRes, auditRes] = await Promise.all([
       fetch(`${SUPABASE_URL}/rest/v1/scores?select=id,judge_id,application_id,dim_community,dim_innovation,dim_feasibility,dim_sustainability,dim_founder_team,total,status,submitted_at`, { headers: sbHeaders }),
       fetch(`${SUPABASE_URL}/rest/v1/judges?select=id,name,email,affiliation,active&order=name.asc`, { headers: sbHeaders }),
-      fetch(`${SUPABASE_URL}/rest/v1/inbound_emails?select=${inboxFields}&status=neq.archived&order=received_at.desc&limit=2000`, { headers: sbHeaders }),
+      fetch(`${SUPABASE_URL}/rest/v1/inbound_emails?select=${inboxFields}&order=received_at.desc&limit=2000`, { headers: sbHeaders }),
       fetch(`${SUPABASE_URL}/rest/v1/outbound_replies?select=id,in_reply_to_id,from_alias,to_address,subject,sent_at,status&order=sent_at.desc&limit=300`, { headers: sbHeaders }),
       fetch(`${SUPABASE_URL}/rest/v1/audit_log?select=id,at,actor,action,target_table,target_id,before_data,after_data,notes&order=at.desc&limit=100`, { headers: sbHeaders }),
     ]);
@@ -298,8 +298,11 @@ export const handler = async (event) => {
     });
 
   // Inbox stats — by-alias + by-status counts for the new admin section.
-  const inboxStats = { total: inboxRows.length, by_alias: {}, by_status: {} };
-  for (const m of inboxRows) {
+  // Archived rows are included in `inbox` (so the admin can view and restore
+  // them) but left out of the totals, which describe the live inbox.
+  const liveInbox = inboxRows.filter((m) => m.status !== "archived");
+  const inboxStats = { total: liveInbox.length, by_alias: {}, by_status: { archived: inboxRows.length - liveInbox.length } };
+  for (const m of liveInbox) {
     inboxStats.by_alias[m.to_alias]  = (inboxStats.by_alias[m.to_alias]  || 0) + 1;
     inboxStats.by_status[m.status]   = (inboxStats.by_status[m.status]   || 0) + 1;
   }

@@ -65,6 +65,7 @@
   };
   var selectedIds = new Set(); // #10 bulk-selection of application ids
   var selectedDraftTokens = new Set(); // bulk-selection of draft tokens (separate set — different id shape/table)
+  var selectedInboxIds = new Set(); // bulk-selection of inbox message ids
 
   // ---------- Helpers ----------
   function fmtMoney(v) {
@@ -556,7 +557,8 @@
     var status = state.inboxStatus;
     return state.inbox.filter(function (m) {
       if (alias !== 'all' && m.to_alias !== alias) return false;
-      if (status !== 'all' && m.status !== status) return false;
+      // Archived mail only shows under its own filter; "All" is the live inbox.
+      if (status === 'all' ? m.status === 'archived' : m.status !== status) return false;
       return true;
     });
   }
@@ -566,9 +568,11 @@
     if (!sec) return;
     sec.hidden = false;
 
-    var unread = 0, replied = 0, total = state.inbox.length;
+    var unread = 0, replied = 0, total = 0;
     var byAlias = {};
     state.inbox.forEach(function (m) {
+      if (m.status === 'archived') return;
+      total++;
       if (m.status === 'unread')  unread++;
       if (m.status === 'replied') replied++;
       byAlias[m.to_alias] = (byAlias[m.to_alias] || 0) + 1;
@@ -588,10 +592,23 @@
     var inboxPager = document.getElementById('inbox-pager');
     var filtered = applyInboxFilters();
     var collapsed = list.classList.contains('is-collapsed');
+
+    // Keep the selection to messages the current filter shows, so a bulk
+    // action never touches mail the admin can't see.
+    if (selectedInboxIds.size) {
+      var shown = {};
+      filtered.forEach(function (m) { shown[m.id] = true; });
+      Array.from(selectedInboxIds).forEach(function (id) { if (!shown[id]) selectedInboxIds.delete(id); });
+    }
+    document.getElementById('inbox-select').hidden = collapsed || filtered.length === 0;
+    document.querySelectorAll('[data-inbox-bulk="unarchive"]').forEach(function (b) { b.hidden = state.inboxStatus !== 'archived'; });
+    document.querySelectorAll('[data-inbox-bulk="archive"]').forEach(function (b) { b.hidden = state.inboxStatus === 'archived'; });
+
     if (filtered.length === 0) {
       list.innerHTML = '';
       document.getElementById('inbox-empty').hidden = collapsed;
       if (inboxPager) inboxPager.hidden = true;
+      syncInboxSelectAll();
       return;
     }
     document.getElementById('inbox-empty').hidden = true;
@@ -622,7 +639,9 @@
       var snip = m.snippet || '';
       var cls = 'inbox-row is-' + escHtml(m.status);
       return [
-        '<li><button type="button" class="' + cls + '" data-inbox-id="' + escHtml(m.id) + '">',
+        '<li class="inbox-item">',
+        '<input type="checkbox" class="inbox-cb" data-inbox-cb="', escHtml(m.id), '" aria-label="Select message from ', escHtml(fromDisp), '"', (selectedInboxIds.has(m.id) ? ' checked' : ''), ' />',
+        '<button type="button" class="' + cls + '" data-inbox-id="' + escHtml(m.id) + '">',
           '<span class="inbox-row__alias">', escHtml(m.to_alias), '@</span>',
           '<span class="inbox-row__from">',
             escHtml(fromDisp),
@@ -644,7 +663,84 @@
         openInboxDrawer(btn.getAttribute('data-inbox-id'));
       });
     });
+    syncInboxSelectAll();
   }
+
+  // ---------- Inbox bulk selection ----------
+  // Same pattern as the applications and drafts bulk bars: a selection set,
+  // a select-all for the visible page, and actions applied in one request.
+  var inboxListEl = document.getElementById('inbox-list');
+  var inboxSelectAllEl = document.getElementById('inbox-select-all');
+  var inboxBulkBar = document.getElementById('inbox-bulk-bar');
+  var inboxBulkMsg = document.getElementById('inbox-bulk-msg');
+  function syncInboxSelectAll() {
+    var cbs = inboxListEl ? inboxListEl.querySelectorAll('.inbox-cb') : [];
+    var checked = 0;
+    cbs.forEach(function (cb) { if (cb.checked) checked++; });
+    if (inboxSelectAllEl) {
+      inboxSelectAllEl.checked = cbs.length > 0 && checked === cbs.length;
+      inboxSelectAllEl.indeterminate = checked > 0 && checked < cbs.length;
+    }
+    var n = selectedInboxIds.size;
+    if (inboxBulkBar) inboxBulkBar.hidden = n === 0;
+    var countEl = document.getElementById('inbox-bulk-count');
+    if (countEl) countEl.textContent = n + ' selected';
+  }
+  if (inboxListEl) inboxListEl.addEventListener('change', function (e) {
+    var cb = e.target.closest('.inbox-cb');
+    if (!cb) return;
+    var id = cb.getAttribute('data-inbox-cb');
+    if (cb.checked) selectedInboxIds.add(id); else selectedInboxIds.delete(id);
+    syncInboxSelectAll();
+  });
+  if (inboxSelectAllEl) inboxSelectAllEl.addEventListener('change', function () {
+    inboxListEl.querySelectorAll('.inbox-cb').forEach(function (cb) {
+      cb.checked = inboxSelectAllEl.checked;
+      var id = cb.getAttribute('data-inbox-cb');
+      if (inboxSelectAllEl.checked) selectedInboxIds.add(id); else selectedInboxIds.delete(id);
+    });
+    syncInboxSelectAll();
+  });
+  var inboxBulkClear = document.getElementById('inbox-bulk-clear');
+  if (inboxBulkClear) inboxBulkClear.addEventListener('click', function () {
+    selectedInboxIds.clear();
+    if (inboxBulkMsg) inboxBulkMsg.textContent = '';
+    renderInbox();
+  });
+  var INBOX_BULK_STATUS = { mark_read: 'read', mark_unread: 'unread', archive: 'archived', unarchive: 'unread', mark_spam: 'spam' };
+  var INBOX_BULK_DONE = { mark_read: 'Marked read', mark_unread: 'Marked unread', archive: 'Archived', unarchive: 'Restored', mark_spam: 'Marked spam' };
+  document.querySelectorAll('[data-inbox-bulk]').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var action = btn.getAttribute('data-inbox-bulk');
+      var ids = Array.from(selectedInboxIds);
+      if (!ids.length) return;
+      var btns = inboxBulkBar.querySelectorAll('button');
+      btns.forEach(function (b) { b.disabled = true; });
+      if (inboxBulkMsg) { inboxBulkMsg.textContent = 'Updating ' + ids.length + '…'; inboxBulkMsg.className = 'rescreen-msg'; }
+      try {
+        var res = await fetch('/.netlify/functions/admin-inbox-update', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ ids: ids, action: action })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        // Reflect the change right away; the refresh below confirms it.
+        var newStatus = INBOX_BULK_STATUS[action];
+        state.inbox.forEach(function (m) {
+          if (!selectedInboxIds.has(m.id)) return;
+          if (action === 'mark_read' && m.status === 'replied') return;
+          m.status = newStatus;
+        });
+        selectedInboxIds.clear();
+        renderInbox();
+        if (inboxBulkMsg) { inboxBulkMsg.textContent = INBOX_BULK_DONE[action] + ': ' + ids.length + '.'; inboxBulkMsg.className = 'rescreen-msg is-ok'; }
+        fetchData();
+      } catch (err) {
+        if (inboxBulkMsg) { inboxBulkMsg.textContent = 'Update failed. Nothing was changed; try again.'; inboxBulkMsg.className = 'rescreen-msg is-err'; }
+      } finally {
+        btns.forEach(function (b) { b.disabled = false; });
+      }
+    });
+  });
 
   // Filter pills
   document.querySelectorAll('[data-inbox-alias]').forEach(function (b) {

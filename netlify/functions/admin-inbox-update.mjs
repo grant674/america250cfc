@@ -1,6 +1,8 @@
 // ============================================================
 // America250 CFC — Admin: update inbox row state
-// POST { id, action: 'mark_read' | 'mark_unread' | 'archive' | 'unarchive' | 'mark_spam' }
+// POST { id | ids, action: 'mark_read' | 'mark_unread' | 'archive' | 'unarchive' | 'mark_spam' }
+// `ids` (up to MAX_IDS) applies the action to several rows in one PATCH,
+// for the inbox bulk-select bar; `id` is the single-row form.
 // Verifies admin cookie. PATCHes inbound_emails via service_role.
 // ============================================================
 
@@ -10,6 +12,7 @@ const SUPABASE_URL = "https://emhcsinxtxshdgiceofa.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_IDS = 500;
 
 function constantTimeEq(a, b) {
   if (typeof a !== "string" || typeof b !== "string") return false;
@@ -99,8 +102,10 @@ export const handler = async (event) => {
     return jsonResponse(400, { error: "invalid_payload" });
   }
 
-  const id = String(body.id || "");
-  if (!UUID_RE.test(id)) return jsonResponse(400, { error: "invalid_id" });
+  const rawIds = Array.isArray(body.ids) ? body.ids : [body.id];
+  const ids = [...new Set(rawIds.map((v) => String(v || "")))];
+  if (ids.length === 0 || ids.length > MAX_IDS) return jsonResponse(400, { error: "invalid_ids" });
+  if (!ids.every((v) => UUID_RE.test(v))) return jsonResponse(400, { error: "invalid_id" });
 
   const action = String(body.action || "");
   const builder = ACTIONS[action];
@@ -108,7 +113,9 @@ export const handler = async (event) => {
 
   const patch = builder();
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/inbound_emails?id=eq.${encodeURIComponent(id)}`,
+    `${SUPABASE_URL}/rest/v1/inbound_emails?id=in.(${ids.join(",")})` +
+      // Marking read must not erase the "replied" state of answered mail.
+      (action === "mark_read" ? "&status=neq.replied" : ""),
     {
       method: "PATCH",
       headers: {
@@ -124,5 +131,5 @@ export const handler = async (event) => {
     const t = await res.text();
     return jsonResponse(502, { error: "update_failed", detail: t });
   }
-  return jsonResponse(200, { ok: true, id, action });
+  return jsonResponse(200, { ok: true, id: ids[0], ids, count: ids.length, action });
 };

@@ -1421,3 +1421,13 @@
 
 /* Disabled state */
 .btn-mini[disabled] { opacity: 0.6; cursor: not-allowed; }
+
+/* Inbox bulk selection — a checkbox beside each message row, a select-all
+   for the visible page, and the shared .bulk-bar for actions. */
+.inbox-select { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.inbox-select__all { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font); font-size: 13px; color: var(--fg-65); cursor: pointer; }
+.inbox-select__all input, .inbox-cb { width: 16px; height: 16px; cursor: pointer; accent-color: var(--c-blue); }
+.inbox-select .bulk-bar { margin-bottom: 0; }
+.inbox-item { display: flex; align-items: center; gap: 10px; }
+.inbox-item .inbox-row { flex: 1; min-width: 0; }
+.inbox-item .inbox-cb { flex: none; }
