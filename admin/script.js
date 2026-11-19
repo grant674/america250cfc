@@ -1644,10 +1644,53 @@
     if (typeof step !== 'number') return '—';
     return 'Step ' + Math.min(Math.max(step, 1), TOTAL_APPLY_STEPS) + ' of ' + TOTAL_APPLY_STEPS;
   }
+  // "Actively applying": got past contact details into the project (step 3+),
+  // filled in at least 15 answers, and named the organization. (No project-title
+  // check: some real drafts have a title clipped to one letter.) Keeps one draft per email and per organization (the furthest
+  // along), so nobody gets two reminders for parallel drafts.
+  var REMIND_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  function draftEmail(d) { return String(d.email || draftFields(d).lead_email || '').trim().toLowerCase(); }
+  function draftOrgKey(d) {
+    return String(draftFields(d).org_name || '').toLowerCase()
+      .replace(/\b(the|inc|incorporated|llc|corp|corporation|co|ltd)\b/g, '').replace(/[^a-z0-9]/g, '');
+  }
+  function draftFarthest(d) {
+    var v = d.data && (typeof d.data.farthest === 'number' ? d.data.farthest : d.data.step);
+    return typeof v === 'number' ? v : 0;
+  }
+  function draftFilled(d) {
+    var f = draftFields(d), n = 0;
+    Object.keys(f).forEach(function (k) { if (typeof f[k] === 'string' && f[k].trim()) n++; });
+    return n;
+  }
+  function isActiveDraft(d) {
+    return REMIND_EMAIL_RE.test(draftEmail(d)) && draftFarthest(d) >= 3 && draftFilled(d) >= 15 &&
+      draftOrgKey(d).length >= 3;
+  }
+  function activeReminderTargets() {
+    var best = function (a, b) {
+      return (draftFarthest(b) - draftFarthest(a)) || (draftFilled(b) - draftFilled(a)) ||
+        (String(b.updated_at || '') > String(a.updated_at || '') ? 1 : -1);
+    };
+    var list = (state.drafts || []).filter(isActiveDraft).sort(best);
+    var seenEmail = {}, seenOrg = {};
+    return list.filter(function (d) {
+      var e = draftEmail(d), o = draftOrgKey(d);
+      if (seenEmail[e] || seenOrg[o]) return false;
+      seenEmail[e] = seenOrg[o] = true;
+      return true;
+    });
+  }
   function applyDraftFilters() {
     var q = state.draftSearch.trim().toLowerCase();
+    var activeSet = null;
+    if (state.draftFilter === 'active') {
+      activeSet = {};
+      activeReminderTargets().forEach(function (d) { activeSet[d.token] = true; });
+    }
     return state.drafts.filter(function (d) {
       if (state.draftFilter === 'email' && !(d.email && d.email.trim())) return false;
+      if (activeSet && !activeSet[d.token]) return false;
       if (!q) return true;
       var f = draftFields(d);
       var hay = [
@@ -1670,6 +1713,7 @@
       var draftsSubText = state.drafts.length + ' unsubmitted draft' + (state.drafts.length === 1 ? '' : 's');
       if (state.draftsHiddenSubmitted) draftsSubText += ' · ' + state.draftsHiddenSubmitted + ' hidden (already submitted)';
       if (state.draftFilter === 'email') draftsSubText += ' · ' + filtered.length + ' with an email on file';
+      if (state.draftFilter === 'active') draftsSubText += ' · ' + filtered.length + ' actively applying (these get "Remind active")';
       if (state.draftSearch.trim()) draftsSubText += ' · ' + filtered.length + ' matching search';
       draftsSub.textContent = draftsSubText;
     }
@@ -1810,7 +1854,7 @@
     }
   });
 
-  // ---------- Remind all drafts with an email on file ----------
+  // ---------- Remind active drafts (see isActiveDraft) ----------
   // Sends the same default reminder used by "Message about this draft" to
   // every draft with an email, one at a time via the existing single-draft
   // endpoint — no new backend needed, and each send still gets its own
@@ -1831,13 +1875,14 @@
   }
   if (btnRemindAllDrafts) btnRemindAllDrafts.addEventListener('click', async function () {
     if (!state.draftsLoaded) await fetchDrafts();
-    var targets = (state.drafts || []).filter(function (d) { return d.email && d.email.trim(); });
+    var targets = activeReminderTargets();
     if (!targets.length) {
-      if (remindAllMsg) { remindAllMsg.textContent = 'No drafts have an email on file.'; remindAllMsg.className = 'rescreen-msg'; }
+      if (remindAllMsg) { remindAllMsg.textContent = 'No drafts look actively in progress.'; remindAllMsg.className = 'rescreen-msg'; }
       return;
     }
-    var confirmMsg = 'Send a reminder email to ' + targets.length + ' draft applicant' + (targets.length === 1 ? '' : 's') +
-      ' with an email on file? This cannot be undone.';
+    var confirmMsg = 'Send a reminder email to ' + targets.length + ' applicant' + (targets.length === 1 ? '' : 's') +
+      ' who are actively working on a draft (step 3 or later, one per person and organization)? ' +
+      'Anyone who has already submitted is skipped. Use the "Active" filter to review the list first. This cannot be undone.';
     if (!window.confirm(confirmMsg)) return;
     btnRemindAllDrafts.disabled = true;
     var sent = 0, failed = 0, skipped = 0;
