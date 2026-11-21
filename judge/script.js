@@ -78,23 +78,42 @@
 
   // ---- Auth flow ----
   async function sendMagicLink(email) {
-    var res = await fetch(SUPABASE_URL + '/auth/v1/otp', {
-      method: 'POST',
-      headers: { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: email,
-        options: {
-          shouldCreateUser: false,
-          emailRedirectTo: window.location.origin + '/judge/',
-        },
-      }),
-    });
+    // Raw GoTrue REST shape (NOT the supabase-js `options` shape, which the
+    // REST endpoint silently ignores): the return address goes in the
+    // `redirect_to` query parameter and "don't create accounts" is
+    // `create_user: false`. Without redirect_to the emailed link lands on the
+    // site home page instead of /judge/ and the sign-in is lost.
+    var res = await fetch(
+      SUPABASE_URL + '/auth/v1/otp?redirect_to=' + encodeURIComponent(window.location.origin + '/judge/'),
+      {
+        method: 'POST',
+        headers: { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, create_user: false }),
+      }
+    );
+    if (res.status === 429) {
+      var limited = new Error('rate_limited');
+      limited.rateLimited = true;
+      throw limited;
+    }
+    // Not on the judge list: answer exactly like success (no enumeration).
+    if (res.status === 400 || res.status === 422) return true;
     if (!res.ok) {
       var err = await res.text();
       throw new Error(err || 'Could not send link.');
     }
     // Supabase responds 200 whether or not the user exists (no enumeration).
     return true;
+  }
+
+  // A failed emailed link comes back as /judge/#error=access_denied&error_code=otp_expired&...
+  // (already used, expired, or opened twice). Returns a message to show, or null.
+  function parseHashError() {
+    if (!window.location.hash || window.location.hash.length < 2) return null;
+    var params = new URLSearchParams(window.location.hash.slice(1));
+    if (!params.get('error') && !params.get('error_code')) return null;
+    history.replaceState(null, '', window.location.pathname);
+    return 'That sign-in link has expired or was already used. Each link works once. Enter your email to get a new one.';
   }
 
   function parseHashFragment() {
@@ -334,6 +353,17 @@
     try {
       await loadConfig();
 
+      // 0) Came back from a dead emailed link? If a session from an earlier
+      // click is still valid just carry on; otherwise explain and offer a new link.
+      var linkError = parseHashError();
+      if (linkError && !loadSession()) {
+        var le = document.getElementById('signin-err');
+        le.textContent = linkError;
+        le.hidden = false;
+        show('signin');
+        return;
+      }
+
       // 1) Magic-link callback?
       var hashSess = parseHashFragment();
       if (hashSess) {
@@ -399,7 +429,9 @@
       document.getElementById('sent-email').textContent = email;
       show('sent');
     } catch (e2) {
-      err.textContent = 'Could not send the link. Please try again or write apply@america250cfc.org.';
+      err.textContent = e2 && e2.rateLimited
+        ? 'A link was sent a moment ago. Check your inbox (and spam), or wait a minute and try again.'
+        : 'Could not send the link. Please try again or write apply@america250cfc.org.';
       err.hidden = false;
     } finally {
       btn.disabled = false;
