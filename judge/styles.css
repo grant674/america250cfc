@@ -88,6 +88,11 @@
 /* ============================================================
    Main layout
    ============================================================ */
+/* The `hidden` attribute must always win. Several sections below set their
+   own `display` (flex), which otherwise overrides the browser's built-in
+   [hidden] rule and leaves the loading spinner and every card on screen. */
+[hidden] { display: none !important; }
+
 .judge-main {
   max-width: var(--container);
   margin: 0 auto;
