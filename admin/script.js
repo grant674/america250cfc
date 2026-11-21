@@ -1403,6 +1403,50 @@
     }
   });
 
+  // Bulk re-screen: runs admin-rescreen (which never emails the applicant)
+  // for each selected application, three at a time. Each one takes a model
+  // call, so this reports progress and a per-outcome tally at the end.
+  var bulkRescreen = document.getElementById('bulk-rescreen');
+  if (bulkRescreen) bulkRescreen.addEventListener('click', async function () {
+    var ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    if (!window.confirm('Re-run AI screening on ' + ids.length + ' application(s)? Their status will be updated to the new ' +
+      'verdict (passed, flagged or rejected). Applicants are not emailed. Applications already sent to judging or ' +
+      'beyond are skipped.')) return;
+    var btns = bulkBar.querySelectorAll('button');
+    btns.forEach(function (b) { b.disabled = true; });
+    var done = 0, ok = 0, skipped = 0, limited = 0, failed = 0, next = 0;
+    function show() {
+      if (bulkMsg) { bulkMsg.textContent = 'Re-screening… ' + done + ' of ' + ids.length; bulkMsg.className = 'rescreen-msg'; }
+    }
+    show();
+    async function worker() {
+      while (next < ids.length) {
+        var id = ids[next++];
+        try {
+          var res = await fetch('/.netlify/functions/admin-rescreen', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify({ id: id })
+          });
+          if (res.ok) ok++;
+          else if (res.status === 409) skipped++;
+          else if (res.status === 429) limited++;
+          else failed++;
+        } catch (err) { failed++; }
+        done++; show();
+      }
+    }
+    await Promise.all([worker(), worker(), worker()]);
+    btns.forEach(function (b) { b.disabled = false; });
+    var parts = ['Re-screened ' + ok];
+    if (skipped) parts.push(skipped + ' skipped (already in judging or later)');
+    if (limited) parts.push(limited + ' not run (hourly screening limit; try again in an hour)');
+    if (failed) parts.push(failed + ' failed');
+    if (bulkMsg) { bulkMsg.textContent = parts.join(', ') + '. Refreshing…'; bulkMsg.className = (failed || limited) ? 'rescreen-msg is-err' : 'rescreen-msg is-ok'; }
+    selectedIds.clear();
+    fetchData();
+  });
+
   // Permanent bulk delete. Separate from the status-change handler above
   // (different endpoint, much stronger confirmation) since this can't be
   // undone — scores and attachments cascade-delete with the application.
