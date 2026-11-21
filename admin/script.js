@@ -1410,14 +1410,32 @@
   if (bulkRescreen) bulkRescreen.addEventListener('click', async function () {
     var ids = Array.from(selectedIds);
     if (!ids.length) return;
-    if (!window.confirm('Re-run AI screening on ' + ids.length + ' application(s)? Their status will be updated to the new ' +
-      'verdict (passed, flagged or rejected). Applicants are not emailed. Applications already sent to judging or ' +
-      'beyond are skipped.')) return;
+    // Spell out what is selected, so a selection made in the wrong view
+    // (e.g. "All" instead of "Flagged") is obvious before anything runs.
+    var STATUS_WORD = { screened: 'passed', flagged: 'flagged', rejected: 'rejected', submitted: 'awaiting AI',
+      approved: 'approved', in_judging: 'in judging', finalist: 'finalist', winner: 'winner', archived: 'archived' };
+    var byStatus = {};
+    ids.forEach(function (id) {
+      var r = (state.rows || []).find(function (x) { return x.id === id; });
+      var k = r ? (STATUS_WORD[r.status] || r.status) : 'unknown';
+      byStatus[k] = (byStatus[k] || 0) + 1;
+    });
+    var breakdown = Object.keys(byStatus).map(function (k) { return byStatus[k] + ' ' + k; }).join(', ');
+    var passedNote = byStatus.passed
+      ? '\n\nNote: ' + byStatus.passed + ' of these already passed screening. Re-running them could change them to flagged or rejected.'
+      : '';
+    if (!window.confirm('Re-run AI screening on ' + ids.length + ' application(s)?\n\nSelected: ' + breakdown + '.' + passedNote +
+      '\n\nEach status will be updated to the new verdict (passed, flagged or rejected). Applicants are not emailed. ' +
+      'Applications already sent to judging or beyond are skipped.\n\nKeep this tab open until it finishes: ' +
+      'closing or refreshing the page stops the run.')) return;
     var btns = bulkBar.querySelectorAll('button');
     btns.forEach(function (b) { b.disabled = true; });
+    // Warn before leaving or refreshing mid-run: the batch runs in this page.
+    function warnLeave(e) { e.preventDefault(); e.returnValue = ''; return ''; }
+    window.addEventListener('beforeunload', warnLeave);
     var done = 0, ok = 0, skipped = 0, limited = 0, failed = 0, next = 0;
     function show() {
-      if (bulkMsg) { bulkMsg.textContent = 'Re-screening… ' + done + ' of ' + ids.length; bulkMsg.className = 'rescreen-msg'; }
+      if (bulkMsg) { bulkMsg.textContent = 'Re-screening… ' + done + ' of ' + ids.length + ' (keep this tab open)'; bulkMsg.className = 'rescreen-msg'; }
     }
     show();
     async function worker() {
@@ -1437,6 +1455,7 @@
       }
     }
     await Promise.all([worker(), worker(), worker()]);
+    window.removeEventListener('beforeunload', warnLeave);
     btns.forEach(function (b) { b.disabled = false; });
     var parts = ['Re-screened ' + ok];
     if (skipped) parts.push(skipped + ' skipped (already in judging or later)');
