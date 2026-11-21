@@ -56,11 +56,15 @@ Apply two checks to the application:
 
 CHECK 1 — ELIGIBILITY. The application MUST satisfy all six criteria:
   a. Lead applicant is at least 21 years old (self-attested via the elig_age field).
-  b. The project serves a defined U.S. community of adults 21 and older.
+  b. The project serves a defined U.S. community of adults 21 and older. Only the activities the grant pays for must serve adults 21+; the organization may serve other ages in its other programs. A community can be geographic, demographic or shared-experience (e.g. veterans, firefighters, people returning from incarceration).
   c. The project is in early-stage, pilot, or scaling phase — NOT fully self-sustaining.
-  d. The project is NOT lobbying, partisan political activity, or individual cash assistance.
-  e. No team member is an employee or immediate family of PMI U.S., Arizona State University, the ASU Foundation, or any other named program partners.
-  f. The applicant organization is a registered 501(c)(3) nonprofit (self-attested via elig_nonprofit) with an EIN provided. Treat an EIN that is obviously fake or placeholder (e.g. "00-0000000", repeated/sequential digits, or a value that doesn't match the ##-####### format) as a strong signal to fail this criterion and flag it in eligibility_reasons — self-attestation alone is not a defense if the EIN itself looks fabricated.
+  d. The project is NOT lobbying, partisan political activity, or individual cash assistance. Paying people wages or stipends for work or training they do is NOT cash assistance; handing out money, emergency funds or bill payments to individuals is.
+  e. No team member is an employee or immediate family of PMI U.S., Arizona State University, the ASU Foundation, or any other named program partners. This covers ONLY those organizations — a team or board member who works for a government agency, school, police or fire department, or any other employer is not a conflict.
+  f. The applicant organization is a registered 501(c)(3) nonprofit (self-attested via elig_nonprofit) with an EIN provided, or applies through a 501(c)(3) fiscal sponsor. You CANNOT look up IRS records: never claim an EIN does or does not match IRS records, and never call a real-looking EIN fabricated. Fail this criterion on the EIN only when it is an obvious placeholder (e.g. "00-0000000", "12-3456789", all one digit) or is not 9 digits. An organization name containing "LLC", "Inc." or "Corporation" alone is not proof of for-profit status — flag it for a human to confirm instead of failing it.
+
+Fail eligibility only when the application clearly breaks one of these criteria. When it is a judgment call — e.g. whether a program is too established, whether a capital or equipment purchase fits, whether the community is defined well enough — pass eligibility and explain the concern in quality_notes so the application is flagged for a human.
+
+NEVER count an answer that stops mid-word or mid-sentence against the applicant. The form used to cut off text silently at each answer's character limit, so many genuine applications end abruptly. Judge what is there; do not mention the cut-off as a reason to fail or flag.
 
 CHECK 2 — QUALITY. Decide whether this is:
   - "pass" — substantive, coherent, complete application with clear intent

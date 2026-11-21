@@ -225,15 +225,21 @@
   }
 
   // ---------- Character counters ----------
+  // The long answers have no maxlength: a browser cap silently drops the end
+  // of pasted text, and applicants submitted answers cut off mid-word. Text
+  // over the limit is kept, the counter says how far over it is, and
+  // validateStep blocks moving on until the applicant shortens it.
   Array.from(form.querySelectorAll('[data-counter]')).forEach(function (ta) {
     var max = parseInt(ta.getAttribute('data-counter'), 10);
     var counter = form.querySelector('[data-count-for="' + ta.name + '"]');
     if (!counter) return;
     function update() {
       var len = ta.value.length;
-      counter.textContent = len + ' / ' + max;
-      counter.classList.toggle('is-near', len >= max * 0.85 && len < max);
-      counter.classList.toggle('is-over', len >= max);
+      var over = len - max;
+      counter.textContent = len + ' / ' + max + (over > 0 ? ' · ' + over + ' over the limit, please shorten' : '');
+      counter.classList.toggle('is-near', len >= max * 0.85 && len <= max);
+      counter.classList.toggle('is-over', over > 0);
+      if (over > 0 || ta.validity.customError) applyCustomChecks(ta);
     }
     ta.addEventListener('input', update);
     update();
@@ -306,6 +312,11 @@
     var msg = '';
     var min = parseInt(el.getAttribute('data-minlength') || '', 10);
     if (min && v && v.length < min) msg = 'Please write at least ' + min + ' characters.';
+    var cap = parseInt(el.getAttribute('data-counter') || '', 10);
+    if (cap && el.value.length > cap) {
+      var over = el.value.length - cap;
+      msg = 'This answer is ' + over + ' character' + (over === 1 ? '' : 's') + ' over the ' + cap + '-character limit. Please shorten it.';
+    }
     if (el.name === 'proj_video_url' && v && !VIDEO_RE.test(v)) msg = 'Use the link to one specific Vimeo, YouTube or Loom video.';
     el.setCustomValidity(msg);
   }
