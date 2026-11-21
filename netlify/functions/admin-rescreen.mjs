@@ -80,6 +80,11 @@ export const handler = async (event) => {
     body: JSON.stringify({ type: "INSERT", table: "applications", record: row, suppressEmail: true }),
   });
   const detail = await res.text();
+  // screen-application answers 200 "rate-limited" when the hourly cost cap is
+  // hit and leaves the row untouched; report that instead of a false success.
+  if (res.ok && detail.trim() === "rate-limited") {
+    return { statusCode: 429, headers: noStore, body: JSON.stringify({ error: "rate_limited" }) };
+  }
   if (!res.ok) {
     console.error("re-screen failed:", res.status, detail);
     return { statusCode: 502, headers: noStore, body: JSON.stringify({ error: "rescreen_failed", status: res.status }) };
