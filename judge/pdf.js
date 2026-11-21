@@ -130,6 +130,34 @@
     return lines;
   }
 
+  // ---- Auto-total ----
+  // Same formula as the portal and the database: each score (0-10) times its
+  // weight, divided by 10. Blank boxes count as 0, so it is a running total
+  // until all five are filled; empty when nothing is scored yet.
+  function runningTotal(values) {
+    var sum = 0, n = 0;
+    values.forEach(function (v, i) {
+      if (v == null || v === '' || isNaN(Number(v))) return;
+      sum += Math.max(0, Math.min(10, Number(v))) * DIMS[i].weight;
+      n++;
+    });
+    return n ? String(Math.round(sum) / 10) : '';
+  }
+  // The same calculation as a PDF form script (runs inside the PDF viewer,
+  // so it must be plain, self-contained ES3).
+  function totalJs(prefix) {
+    return 'var n=[' + DIMS.map(function (d) { return '"' + prefix + d.key + '_score"'; }).join(',') + '];' +
+      'var w=[' + DIMS.map(function (d) { return d.weight; }).join(',') + '];' +
+      'var s=0,c=0;' +
+      'for(var i=0;i<n.length;i++){var f=this.getField(n[i]);if(!f)continue;var v=String(f.value);' +
+      'if(v===""||v==="null"||v==="undefined")continue;var x=Number(v);if(isNaN(x))continue;' +
+      'if(x<0)x=0;if(x>10)x=10;s+=x*w[i];c++;}' +
+      'event.value=c?String(Math.round(s)/10):"";';
+  }
+  // Score boxes accept only 0-10 (or blank).
+  var VALIDATE_JS = 'if(event.value!==""){var x=Number(event.value);' +
+    'if(isNaN(x)||x<0||x>10){app.alert("Please enter a score from 0 to 10.");event.rc=false;}}';
+
   // ---- Build ----
   // apps: application rows (FIELDS). scoresByApp: { appId: scores row } — any
   // scores already entered in the portal are pre-filled on the sheet.
@@ -152,6 +180,7 @@
     doc.setAuthor('America250 Community Futures Challenge');
     doc.setSubject('Confidential judging material');
 
+    var calcOrder = [];   // total fields, for the form's calculation order
     apps.forEach(function (a, appIndex) {
       var pages = [];
       var page, y;
@@ -270,13 +299,13 @@
       text('Score sheet', { size: 18, font: bold, lead: 23 });
       text(a.proj_title || 'Untitled application', { size: 11, font: bold, color: BLUE });
       gap(4);
-      text('Score each criterion from 0 (lowest) to 10 (highest), whole numbers. Type into the boxes, or print and write by hand.',
+      text('Score each criterion from 0 (lowest) to 10 (highest), whole numbers. Type into the boxes and the total adds up for you, or print and write by hand.',
         { size: 9.5, color: MUTED });
       if (sc && sc.status === 'submitted') text('You have already submitted scores for this application in the portal; they are shown below.', { size: 9.5, font: bold });
       if (sc && sc.status === 'recused') text('You recused yourself from this application in the portal.', { size: 9.5, font: bold });
       gap(8);
 
-      var SCORE_W = 62, NOTES_H = 36, prefix = 'app' + (appIndex + 1) + '_';
+      var SCORE_W = 62, NOTES_H = 34, prefix = 'app' + (appIndex + 1) + '_';
       function field(name, x, yy, w, h, value, multiline) {
         var f = form.createTextField(prefix + name);
         if (multiline) f.enableMultiline();
@@ -284,6 +313,15 @@
         f.addToPage(page, { x: x, y: yy, width: w, height: h, font: font, borderWidth: 0.8,
           borderColor: rgb(0.45, 0.45, 0.45), backgroundColor: rgb(1, 1, 1), textColor: INK });
         f.setFontSize(multiline ? 9 : 14);
+        return f;
+      }
+      // Attach a form script to a field (C = calculate, V = validate). These
+      // run in PDF viewers that support form scripts (Adobe Acrobat / Reader,
+      // Chrome, Edge); elsewhere the boxes are simply typed or written in.
+      function script(f, kind, js) {
+        var action = {};
+        action[kind] = { Type: 'Action', S: 'JavaScript', JS: L.PDFHexString.fromText(js) };
+        f.acroField.dict.set(L.PDFName.of('AA'), doc.context.obj(action));
       }
       DIMS.forEach(function (d) {
         var blockH = 48 + NOTES_H + 8;
@@ -300,7 +338,8 @@
         var sx = PAGE_W - M - 10 - SCORE_W;
         page.drawText('Score', { x: sx - 62, y: top - 20, size: 9, font: bold, color: MUTED });
         page.drawText('/ 10', { x: sx - 62, y: top - 31, size: 8.5, font: font, color: MUTED });
-        field(d.key + '_score', sx - 30, top - 34, SCORE_W + 30 - 0, 24, sc && sc[d.col] != null ? sc[d.col] : '', false);
+        var sf = field(d.key + '_score', sx - 30, top - 34, SCORE_W + 30 - 0, 24, sc && sc[d.col] != null ? sc[d.col] : '', false);
+        script(sf, 'V', VALIDATE_JS);
         // Notes box, full width
         page.drawText('Notes', { x: M + 10, y: top - 48 - 10, size: 7.5, font: bold, color: MUTED });
         field(d.key + '_notes', M + 44, top - 48 - NOTES_H, CONTENT_W - 54, NOTES_H,
@@ -315,12 +354,17 @@
       page.drawText('(community x 25 + feasibility x 20 + innovation x 20 + sustainability x 20 + founder & team x 15) / 10',
         { x: M + 10, y: totTop - 33, size: 7.5, font: font, color: MUTED });
       page.drawText('/ 100', { x: PAGE_W - M - 38, y: totTop - 27, size: 10, font: bold, color: MUTED });
-      field('total', PAGE_W - M - 122, totTop - 35, 78, 26, sc && sc.total != null ? sc.total : '', false);
+      // Auto-total: recalculated by the viewer whenever a score box changes.
+      // Pre-filled here too, so it is right even where scripts don't run.
+      var pre = runningTotal(DIMS.map(function (d) { return sc ? sc[d.col] : null; }));
+      var tf = field('total', PAGE_W - M - 122, totTop - 35, 78, 26, pre, false);
+      script(tf, 'C', totalJs(prefix));
+      calcOrder.push(tf.acroField.ref);
       y = totTop - 44 - 8;
 
-      text('This sheet is a working copy. Your scores count only once you enter and submit them in the judge portal: america250cfc.org/judge/',
+      text('Working copy: scores count only once entered and submitted in the judge portal, america250cfc.org/judge/',
         { size: 9, font: bold });
-      text('The portal works out the weighted total for you. To recuse yourself for a conflict of interest, use the Recuse button on the application in the portal.',
+      text('The total fills in automatically in Adobe Reader, Chrome and Edge; elsewhere, or on paper, use the formula above. To recuse yourself, use the Recuse button in the portal.',
         { size: 8.5, color: MUTED });
 
       // ----- Footer on every page of this application -----
@@ -336,6 +380,8 @@
       });
     });
 
+    // Tell viewers which fields are calculated (and in what order).
+    if (calcOrder.length) form.acroForm.dict.set(L.PDFName.of('CO'), doc.context.obj(calcOrder));
     return await doc.save();
   }
 

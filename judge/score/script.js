@@ -484,16 +484,27 @@
     if (n == null) return '—';
     return (n === Math.floor(n)) ? String(n) : n.toFixed(1);
   }
+  // The total adds up live as each criterion is scored: a running total
+  // while some are still blank ("so far"), the final total once all five are
+  // in. (The saved `scores.total` stays empty until all five are scored.)
   function updateTotal() {
     var vals = readPanelValues();
-    var allFilled = DIMS.every(function (d) { return vals.dims[d.col] != null; });
-    if (!allFilled) {
-      document.getElementById('total-num').textContent = '—';
+    var filled = DIMS.filter(function (d) { return vals.dims[d.col] != null; }).length;
+    var numEl = document.getElementById('total-num');
+    var noteEl = document.getElementById('total-note');
+    var wrap = numEl.parentNode.parentNode;
+    wrap.classList.toggle('is-partial', filled > 0 && filled < DIMS.length);
+    if (filled === 0) {
+      numEl.textContent = '—';
+      noteEl.textContent = 'Adds up as you score';
       return;
     }
     var weighted = 0;
     DIMS.forEach(function (d) { weighted += (vals.dims[d.col] || 0) * d.weight; });
-    document.getElementById('total-num').textContent = fmtTotal(weighted / 10);
+    numEl.textContent = fmtTotal(weighted / 10);
+    noteEl.textContent = filled === DIMS.length
+      ? 'Weighted total'
+      : 'So far · ' + filled + ' of ' + DIMS.length + ' scored';
   }
 
   function setSaveStatus(state, msg) {

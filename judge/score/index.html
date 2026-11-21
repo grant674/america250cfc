@@ -20,7 +20,7 @@ function OptanonWrapper() { }
 <link rel="preconnect" href="https://emhcsinxtxshdgiceofa.supabase.co" />
 <link rel="stylesheet" href="/styles.css?v=15" />
 <link rel="stylesheet" href="/judge/styles.css?v=4" />
-<link rel="stylesheet" href="/judge/score/styles.css?v=5" />
+<link rel="stylesheet" href="/judge/score/styles.css?v=6" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="judge-body">
@@ -100,9 +100,12 @@ function OptanonWrapper() { }
             <h2 class="score-panel__title">Your score</h2>
             <p class="score-panel__save" id="save-status">Auto-saves as you go</p>
           </div>
-          <div class="score-total" aria-live="polite">
-            <span class="score-total__num" id="total-num">—</span>
-            <span class="score-total__lab">/ 100</span>
+          <div class="score-total-wrap" aria-live="polite">
+            <div class="score-total">
+              <span class="score-total__num" id="total-num">—</span>
+              <span class="score-total__lab">/ 100</span>
+            </div>
+            <div class="score-total__note" id="total-note">Adds up as you score</div>
           </div>
         </div>
 
@@ -144,7 +147,7 @@ function OptanonWrapper() { }
   </div>
 </div>
 
-<script src="/judge/pdf.js?v=1" defer></script>
-<script src="/judge/score/script.js?v=8" defer></script>
+<script src="/judge/pdf.js?v=2" defer></script>
+<script src="/judge/score/script.js?v=9" defer></script>
 </body>
 </html>
