@@ -648,6 +648,25 @@
     }
   });
 
+  // ---- Download this application + score sheet as a PDF ----
+  // Any scores already entered here are pre-filled on the sheet, so save
+  // pending edits first.
+  document.getElementById('btn-pdf').addEventListener('click', async function () {
+    var btn = this, msg = document.getElementById('pdf-msg');
+    if (!state.app || !window.CFCJudgePdf) return;
+    var label = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Preparing PDF…'; msg.textContent = '';
+    try {
+      await flushSaves();
+      await window.CFCJudgePdf.downloadOne(state.app, state.score);
+    } catch (err) {
+      console.error('PDF error:', err);
+      msg.textContent = 'Could not create the PDF. Please try again.';
+    } finally {
+      btn.disabled = false; btn.textContent = label;
+    }
+  });
+
   // ---- Sign out (bar) ----
   document.getElementById('btn-signout').addEventListener('click', function () {
     saveSessionToLs(null);
