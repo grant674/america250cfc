@@ -202,6 +202,147 @@
   gap: 12px;
 }
 .judging-grid.is-collapsed { display: none; }
+/* ---- Assignments (judges x finalists grid) ---- */
+.assign {
+  margin-top: 20px;
+  background: var(--c-white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+.assign__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px 16px;
+}
+.assign__h {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--c-black);
+  margin: 0;
+}
+.assign__sub, .assign__note, .assign__legend {
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fg-65);
+  margin: 4px 0 0;
+}
+.assign__note {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--c-gray);
+  border-radius: var(--radius-sm);
+  color: var(--c-black);
+}
+.assign__legend { margin-top: 12px; font-size: 12px; }
+.assign__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.assign__save {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--c-blue);
+  border: 1px solid var(--c-blue);
+  color: var(--c-white);
+  border-radius: var(--radius-md);
+  padding: 6px 14px;
+  cursor: pointer;
+}
+.assign__save:disabled { opacity: 0.4; cursor: default; }
+.assign__msg {
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  margin: 8px 0 0;
+  min-height: 1em;
+  color: var(--fg-65);
+}
+.assign__msg:empty { display: none; }
+.assign__msg.is-ok  { color: #15803d; }
+.assign__msg.is-err { color: var(--c-red); }
+.assign__msg.is-dirty { color: var(--c-blue); }
+.assign__scroll {
+  margin-top: 14px;
+  overflow: auto;
+  max-height: 70vh;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.assign-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--font);
+  font-size: 13px;
+  width: 100%;
+}
+.assign-table th, .assign-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 8px 10px;
+  text-align: center;
+  background: var(--c-white);
+}
+.assign-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  vertical-align: bottom;
+  background: var(--c-gray);
+  font-weight: 700;
+  min-width: 96px;
+  max-width: 130px;
+}
+.assign-table th.assign-app, .assign-table td.assign-app {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left;
+  min-width: 240px;
+  max-width: 360px;
+  border-right: 1px solid var(--line-strong);
+}
+.assign-table thead th.assign-app { z-index: 3; }
+.assign-judge__name { display: block; font-size: 12px; line-height: 1.25; color: var(--c-black); overflow-wrap: anywhere; }
+.assign-judge__count { display: block; font-size: 11px; font-weight: 400; color: var(--fg-65); margin: 2px 0 6px; }
+.assign-app__title { display: block; font-weight: 700; color: var(--c-black); }
+.assign-app__org { display: block; font-size: 12px; color: var(--fg-65); }
+.assign-app__n { font-size: 11px; color: var(--fg-65); white-space: nowrap; }
+.assign-link {
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-blue);
+  background: none;
+  border: 0;
+  padding: 2px 4px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.assign-table td.is-changed { background: #fff8d6; }
+.assign-table input[type="checkbox"] { width: 17px; height: 17px; cursor: pointer; accent-color: var(--c-blue); vertical-align: middle; }
+.assign-mark {
+  display: inline-block;
+  min-width: 16px;
+  margin-left: 4px;
+  padding: 0 3px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  vertical-align: middle;
+  color: var(--c-white);
+  background: var(--fg-45);
+}
+.assign-mark--submitted { background: #15803d; }
+.assign-mark--draft     { background: var(--c-blue); }
+.assign-mark--recused   { background: var(--c-red); }
+#judging-body.is-collapsed { display: none; }
+
 .judge-progress {
   background: var(--c-white);
   border: 1px solid var(--line);

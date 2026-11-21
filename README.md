@@ -22,7 +22,14 @@ an edge auth gate, backed by Supabase, Resend, and Anthropic.
   → inserted via service role → an `AFTER INSERT` trigger runs AI screening
   (`screen-application` → Claude) → confirmation email via Resend.
 - Judges sign in via magic link (`/judge/`), score blind (applicant identity is
-  withheld at the DB level), data gated by Supabase RLS.
+  withheld at the DB level), data gated by Supabase RLS. A judge sees only the
+  applications assigned to them.
+- Judging workflow (admin): tick the 25 finalists in the applications table →
+  **Send to judging** → **Invite judge** for each judge → in **Judging →
+  Assignments** tick which judge scores which finalist (or *Assign all to every
+  judge*) → **Save assignments**. Stored in `judge_assignments`
+  (`admin-assignments` function); schema + RLS in
+  [`db/migrations/2026-11-21-judge-assignments.sql`](db/migrations/2026-11-21-judge-assignments.sql).
 - Staff `/admin/` dashboard (separate password) lists applications, scores, inbox,
   audit log; can re-screen, bulk-update status, notify finalists/winners.
 

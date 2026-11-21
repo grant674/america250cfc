@@ -47,6 +47,7 @@
     fetchInFlight: false,
     pollTimer: null,
     judgesProgress: [],
+    judging: null,        // { ready, judges, assignments, score_status } from admin-list
     inbox: [],
     inboxAlias: 'all',
     inboxStatus: 'all',
@@ -127,20 +128,25 @@
     });
   }
 
-  // ---------- Render: judges progress ----------
+  // ---------- Render: judging (progress + assignments) ----------
+  var FINAL_POOL_TARGET = 25;                       // planned number of finalists
+  var POOL_STATUSES = ['in_judging', 'finalist', 'winner'];
+  function inPool(r) { return POOL_STATUSES.indexOf(r.status) !== -1; }
+  function poolRows() {
+    return (state.rows || []).filter(inPool).sort(function (a, b) {
+      return String(a.proj_title || '').localeCompare(String(b.proj_title || ''));
+    });
+  }
+  function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
+
   function renderJudgesProgress(judgesProgress) {
-    var sec = document.getElementById('admin-judging');
-    if (!judgesProgress || judgesProgress.length === 0) {
-      sec.hidden = true;
-      return;
-    }
-    sec.hidden = false;
-    var totalApps = judgesProgress[0] ? judgesProgress[0].total : 0;
+    judgesProgress = judgesProgress || [];
+    var pool = poolRows().length;
     var fullySubmitted = judgesProgress.filter(function (j) { return j.submitted >= j.total && j.total > 0; }).length;
     document.getElementById('judging-sub').textContent =
-      judgesProgress.length + ' active judge' + (judgesProgress.length === 1 ? '' : 's') +
-      ' · ' + totalApps + ' application' + (totalApps === 1 ? '' : 's') + ' in scoring' +
-      (fullySubmitted ? ' · ' + fullySubmitted + ' judge' + (fullySubmitted === 1 ? '' : 's') + ' complete' : '');
+      plural(judgesProgress.length, 'active judge') +
+      ' · ' + pool + ' of ' + FINAL_POOL_TARGET + ' finalists in the judging pool' +
+      (fullySubmitted ? ' · ' + plural(fullySubmitted, 'judge') + ' complete' : '');
 
     var html = judgesProgress.map(function (j) {
       var pct = j.total ? Math.round(100 * j.submitted / j.total) : 0;
@@ -151,7 +157,9 @@
           '<div class="judge-progress__email">', escHtml(j.email || ''), '</div>',
           '<div class="judge-progress__bar"><div class="judge-progress__fill" style="width:', String(pct), '%"></div></div>',
           '<div class="judge-progress__meta">',
-            '<span><strong>', String(j.submitted), '</strong> of ', String(j.total), ' submitted</span>',
+            (j.total
+              ? '<span><strong>' + String(j.submitted) + '</strong> of ' + String(j.total) + ' assigned scored</span>'
+              : '<span>Nothing assigned yet</span>'),
             '<span>', String(pct), '%</span>',
           '</div>',
           (j.draft || j.recused
@@ -164,6 +172,233 @@
       ].join('');
     }).join('');
     document.getElementById('judging-grid').innerHTML = html;
+  }
+
+  // ----- Assignments grid: one row per finalist, one column per judge -----
+  // `assignDraft` holds unsaved ticks as "judgeId|appId" keys; null means the
+  // grid mirrors the server. Polling refreshes never overwrite a draft.
+  var assignDraft = null;
+  var assignSaving = false;
+  var assignSig = '';
+  var assignMsgEl = document.getElementById('assign-msg');
+  function aKey(judgeId, appId) { return judgeId + '|' + appId; }
+  function setAssignMsg(text, cls) {
+    assignMsgEl.textContent = text || '';
+    assignMsgEl.className = 'assign__msg' + (cls ? ' ' + cls : '');
+  }
+  // Server-side assignments, limited to cells that are actually in the grid.
+  function serverAssignSet() {
+    var j = state.judging || {};
+    var judgeOk = {}, appOk = {};
+    (j.judges || []).forEach(function (x) { judgeOk[x.id] = true; });
+    poolRows().forEach(function (r) { appOk[r.id] = true; });
+    var set = new Set();
+    (j.assignments || []).forEach(function (p) {
+      if (judgeOk[p[0]] && appOk[p[1]]) set.add(aKey(p[0], p[1]));
+    });
+    return set;
+  }
+  function assignDiff() {
+    var server = serverAssignSet();
+    var draft = assignDraft || server;
+    var assign = [], unassign = [];
+    draft.forEach(function (k) { if (!server.has(k)) assign.push(k.split('|')); });
+    server.forEach(function (k) { if (!draft.has(k)) unassign.push(k.split('|')); });
+    return { assign: assign, unassign: unassign, server: server, draft: draft };
+  }
+
+  function renderAssignments(force) {
+    var j = state.judging;
+    var judges = (j && j.judges) || [];
+    var pool = poolRows();
+    var subEl = document.getElementById('assign-sub');
+    var noteEl = document.getElementById('assign-note');
+    var scrollEl = document.getElementById('assign-scroll');
+    var actionsEl = document.getElementById('assign-actions');
+    var legendEl = document.getElementById('assign-legend');
+    function showNote(html) {
+      noteEl.innerHTML = html; noteEl.hidden = false;
+      scrollEl.hidden = true; actionsEl.hidden = true; legendEl.hidden = true;
+      assignDraft = null; assignSig = '';
+    }
+
+    subEl.textContent = 'Choose which judges score which finalists. ' +
+      pool.length + ' of ' + FINAL_POOL_TARGET + ' finalists are in the judging pool' +
+      (pool.length > FINAL_POOL_TARGET ? ' (more than planned).' : '.');
+
+    if (!j) return showNote('Loading…');
+    if (!j.ready) return showNote('<strong>One-time database update needed.</strong> Assignments are stored in a new table that has not been created yet. Run <code>db/migrations/2026-11-21-judge-assignments.sql</code> in Supabase, then refresh.');
+    if (!pool.length) return showNote('<strong>No finalists in the judging pool yet.</strong> In the applications table below, tick your ' + FINAL_POOL_TARGET + ' finalists and choose <em>Send to judging</em>. They will then appear here to assign.');
+    if (!judges.length) return showNote('<strong>No judges yet.</strong> Use <em>Invite judge</em> at the top of the page. Each judge gets an email with a sign-in link, and appears here as a column.');
+
+    // Drop draft keys for judges/applications that left the grid.
+    var valid = {};
+    judges.forEach(function (jd) { pool.forEach(function (r) { valid[aKey(jd.id, r.id)] = true; }); });
+    if (assignDraft) assignDraft.forEach(function (k) { if (!valid[k]) assignDraft.delete(k); });
+
+    var d = assignDiff();
+    var dirty = d.assign.length + d.unassign.length > 0;
+    if (!dirty) assignDraft = null;
+
+    var scoreBy = {};
+    (j.score_status || []).forEach(function (t) { scoreBy[aKey(t[0], t[1])] = t[2]; });
+
+    // Skip the DOM rebuild when nothing changed, so a polling refresh doesn't
+    // steal focus or flicker while the admin is working in the grid.
+    var sig = JSON.stringify([
+      judges.map(function (x) { return [x.id, x.name]; }),
+      pool.map(function (r) { return [r.id, r.proj_title, r.org_name, r.status]; }),
+      Array.from(d.server).sort(), Array.from(d.draft).sort(), j.score_status || [], assignSaving,
+    ]);
+    noteEl.hidden = true; scrollEl.hidden = false; actionsEl.hidden = false; legendEl.hidden = false;
+    document.getElementById('assign-save').disabled = !dirty || assignSaving;
+    document.getElementById('assign-discard').hidden = !dirty;
+    if (dirty && !assignSaving) {
+      var bits = [];
+      if (d.assign.length) bits.push(d.assign.length + ' to add');
+      if (d.unassign.length) bits.push(d.unassign.length + ' to remove');
+      setAssignMsg('Unsaved changes: ' + bits.join(', ') + '. Judges see nothing new until you save.', 'is-dirty');
+    } else if (!dirty && assignMsgEl.classList.contains('is-dirty')) {
+      setAssignMsg('');
+    }
+    if (!force && sig === assignSig) return;
+    assignSig = sig;
+
+    var active = document.activeElement;
+    var focusKey = active && active.getAttribute ? active.getAttribute('data-akey') : null;
+
+    var head = ['<thead><tr><th class="assign-app" scope="col">Finalist</th>'];
+    judges.forEach(function (jd) {
+      var n = pool.filter(function (r) { return d.draft.has(aKey(jd.id, r.id)); }).length;
+      head.push(
+        '<th scope="col" title="', escHtml(jd.email || ''), '">',
+          '<span class="assign-judge__name">', escHtml(jd.name), '</span>',
+          '<span class="assign-judge__count">', String(n), ' of ', String(pool.length), '</span>',
+          '<button type="button" class="assign-link" data-acol="', escHtml(jd.id), '" data-aset="1" aria-label="Assign all finalists to ', escHtml(jd.name), '">All</button>',
+          '<button type="button" class="assign-link" data-acol="', escHtml(jd.id), '" data-aset="0" aria-label="Remove all finalists from ', escHtml(jd.name), '">None</button>',
+        '</th>');
+    });
+    head.push('</tr></thead>');
+
+    var MARK = { submitted: ['S', 'Scored'], draft: ['D', 'Scoring in progress'], recused: ['R', 'Recused'] };
+    var body = ['<tbody>'];
+    pool.forEach(function (r) {
+      var n = judges.filter(function (jd) { return d.draft.has(aKey(jd.id, r.id)); }).length;
+      body.push('<tr><td class="assign-app">',
+        '<span class="assign-app__title">', escHtml(r.proj_title || '(untitled)'), '</span>',
+        '<span class="assign-app__org">', escHtml(r.org_name || ''), '</span>',
+        '<span class="assign-app__n">', plural(n, 'judge'), '</span> ',
+        '<button type="button" class="assign-link" data-arow="', escHtml(r.id), '" data-aset="1">All</button>',
+        '<button type="button" class="assign-link" data-arow="', escHtml(r.id), '" data-aset="0">None</button>',
+        '</td>');
+      judges.forEach(function (jd) {
+        var k = aKey(jd.id, r.id);
+        var on = d.draft.has(k);
+        var changed = on !== d.server.has(k);
+        var m = MARK[scoreBy[k]];
+        body.push('<td', changed ? ' class="is-changed"' : '', '>',
+          '<input type="checkbox" data-akey="', escHtml(k), '"', on ? ' checked' : '', assignSaving ? ' disabled' : '',
+          ' aria-label="', escHtml(jd.name), ' scores ', escHtml(r.proj_title || 'this application'), '" />',
+          m ? '<span class="assign-mark assign-mark--' + scoreBy[k] + '" title="' + m[1] + '">' + m[0] + '</span>' : '',
+          '</td>');
+      });
+      body.push('</tr>');
+    });
+    body.push('</tbody>');
+    var table = document.getElementById('assign-table');
+    table.innerHTML = head.join('') + body.join('');
+    if (focusKey) {
+      var again = table.querySelector('input[data-akey="' + focusKey + '"]');
+      if (again) again.focus();
+    }
+  }
+
+  // Edit helpers: every edit starts from the current draft (or the server set).
+  function editAssignments(fn) {
+    if (assignSaving) return;
+    if (!assignDraft) assignDraft = new Set(serverAssignSet());
+    fn(assignDraft);
+    renderAssignments(true);
+  }
+  function setCells(judgeIds, appIds, on) {
+    editAssignments(function (set) {
+      judgeIds.forEach(function (jid) {
+        appIds.forEach(function (aid) { if (on) set.add(aKey(jid, aid)); else set.delete(aKey(jid, aid)); });
+      });
+    });
+  }
+  function gridJudgeIds() { return ((state.judging && state.judging.judges) || []).map(function (x) { return x.id; }); }
+  function gridAppIds() { return poolRows().map(function (r) { return r.id; }); }
+
+  (function wireAssignments() {
+    var table = document.getElementById('assign-table');
+    table.addEventListener('change', function (e) {
+      var k = e.target.getAttribute && e.target.getAttribute('data-akey');
+      if (!k) return;
+      var on = e.target.checked;
+      editAssignments(function (set) { if (on) set.add(k); else set.delete(k); });
+    });
+    table.addEventListener('click', function (e) {
+      var btn = e.target.closest('.assign-link');
+      if (!btn) return;
+      var on = btn.getAttribute('data-aset') === '1';
+      if (btn.hasAttribute('data-acol')) setCells([btn.getAttribute('data-acol')], gridAppIds(), on);
+      else setCells(gridJudgeIds(), [btn.getAttribute('data-arow')], on);
+    });
+    document.getElementById('assign-all').addEventListener('click', function () { setCells(gridJudgeIds(), gridAppIds(), true); });
+    document.getElementById('assign-none').addEventListener('click', function () { setCells(gridJudgeIds(), gridAppIds(), false); });
+    document.getElementById('assign-discard').addEventListener('click', function () {
+      assignDraft = null; setAssignMsg(''); renderAssignments(true);
+    });
+    document.getElementById('assign-save').addEventListener('click', saveAssignments);
+    window.addEventListener('beforeunload', function (e) {
+      if (!assignDraft) return;
+      e.preventDefault(); e.returnValue = ''; return '';
+    });
+  })();
+
+  async function saveAssignments() {
+    var d = assignDiff();
+    if (assignSaving || d.assign.length + d.unassign.length === 0) return;
+    var scoreBy = {};
+    ((state.judging && state.judging.score_status) || []).forEach(function (t) { scoreBy[aKey(t[0], t[1])] = t[2]; });
+    var withScores = d.unassign.filter(function (p) { return scoreBy[aKey(p[0], p[1])]; }).length;
+    if (withScores && !window.confirm(
+      withScores + ' of the assignment(s) you are removing already have scoring started or submitted.\n\n' +
+      'Those scores are kept and still count in the results, but the judge will no longer see the application. Continue?')) return;
+    assignSaving = true;
+    setAssignMsg('Saving…');
+    renderAssignments(true);
+    var ERR = {
+      migration_not_applied: 'The assignments table has not been created in Supabase yet.',
+      application_not_in_judging_pool: 'One of those applications is no longer in the judging pool. Refresh and try again.',
+      unknown_or_inactive_judge: 'One of those judges is no longer active. Refresh and try again.',
+    };
+    try {
+      var res = await fetch('/.netlify/functions/admin-assignments', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ assign: d.assign, unassign: d.unassign }),
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(ERR[data.error] || ('Save failed (' + (data.error || 'HTTP ' + res.status) + ').'));
+      // Fold the saved changes into local state so the grid is right
+      // immediately, then refresh from the server.
+      var saved = new Set(d.draft);
+      var kept = ((state.judging && state.judging.assignments) || []).filter(function (p) {
+        return !d.server.has(aKey(p[0], p[1]));
+      });
+      saved.forEach(function (k) { kept.push(k.split('|')); });
+      state.judging.assignments = kept;
+      assignDraft = null;
+      assignSaving = false;
+      setAssignMsg('Saved. ' + plural(d.assign.length, 'assignment') + ' added, ' + d.unassign.length + ' removed.', 'is-ok');
+      renderAssignments(true);
+      fetchData();
+    } catch (err) {
+      assignSaving = false;
+      setAssignMsg(err.message || 'Save failed.', 'is-err');
+      renderAssignments(true);
+    }
   }
 
   // ---------- Render ----------
@@ -537,7 +772,7 @@
   var judgingToggle = document.getElementById('btn-toggle-judging');
   if (judgingToggle) {
     judgingToggle.addEventListener('click', function () {
-      var grid = document.getElementById('judging-grid');
+      var grid = document.getElementById('judging-body');
       var collapsed = grid.classList.toggle('is-collapsed');
       judgingToggle.textContent = collapsed ? 'Show' : 'Hide';
       judgingToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
@@ -1383,7 +1618,18 @@
     var status = btn.getAttribute('data-bulk-status');
     var ids = Array.from(selectedIds);
     if (!ids.length) return;
-    if (!window.confirm('Set ' + ids.length + ' application(s) to "' + status + '"?')) return;
+    var question = 'Set ' + ids.length + ' application(s) to "' + status + '"?';
+    if (status === 'in_judging') {
+      // Spell out the resulting size of the judging pool against the planned
+      // number of finalists, and that judges still need to be assigned.
+      var sel = {};
+      ids.forEach(function (id) { sel[id] = true; });
+      var poolAfter = (state.rows || []).filter(function (r) { return sel[r.id] || inPool(r); }).length;
+      question = 'Send ' + ids.length + ' application(s) to judging?\n\nThe judging pool will then hold ' + poolAfter +
+        ' application(s)' + (poolAfter > FINAL_POOL_TARGET ? ', which is MORE than the ' + FINAL_POOL_TARGET + ' finalists planned.' : ' (' + FINAL_POOL_TARGET + ' finalists planned).') +
+        '\n\nJudges will not see them until you assign them under Judging > Assignments.';
+    }
+    if (!window.confirm(question)) return;
     var btns = bulkBar.querySelectorAll('button');
     btns.forEach(function (b) { b.disabled = true; });
     if (bulkMsg) { bulkMsg.textContent = 'Updating ' + ids.length + '…'; bulkMsg.className = 'rescreen-msg'; }
@@ -1582,12 +1828,14 @@
       state.rows = data.rows || [];
       state.stats = data.stats || null;
       state.judgesProgress = data.judges_progress || [];
+      state.judging = data.judging || { ready: false, judges: [], assignments: [], score_status: [] };
       state.inbox = data.inbox || [];
       state.inboxStats = data.inbox_stats || null;
       state.outboundReplies = data.outbound_replies || [];
       state.audit = data.audit || [];
       updatedAt.textContent = 'Updated ' + new Date(data.fetched_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
       renderJudgesProgress(state.judgesProgress);
+      renderAssignments();
       renderInbox();
       renderAudit();
       render();

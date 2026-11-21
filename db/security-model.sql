@@ -60,6 +60,7 @@ ALTER TABLE public.applications           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.application_attachments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scores                 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.judges                 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.judge_assignments      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_log              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inbound_emails         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.outbound_replies       ENABLE ROW LEVEL SECURITY;
@@ -84,8 +85,8 @@ GRANT EXECUTE ON FUNCTION public.application_exists(text) TO anon, authenticated
 -- applications — INSERT is service-role only (anon INSERT policy was REVOKED;
 -- the public form posts through the Turnstile-gated submit-application function).
 -- A BEFORE INSERT trigger forces server-controlled columns for non-service inserts.
--- Judges (authenticated) may SELECT only in-judging rows of ACTIVE judges, and
--- only NON-IDENTITY columns (blind review) — enforced by column grants below.
+-- Judges (authenticated) may SELECT only in-judging rows ASSIGNED to them,
+-- only while ACTIVE, and only NON-IDENTITY columns (blind review) — enforced by column grants below.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.enforce_application_intake()
   RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
@@ -140,7 +141,8 @@ GRANT SELECT (
   proj_title, proj_summary, proj_category, proj_phase, proj_city, proj_state, proj_communities,
   proj_budget_total, proj_budget_raised, proj_use_of_funds, proj_video_url,
   impact_community, impact_innovation, impact_feasibility, impact_sustainability, impact_founder_team,
-  elig_age, elig_audience, elig_phase, elig_scope, elig_coi, elig_nonprofit
+  elig_age, elig_audience, elig_phase, elig_scope, elig_coi, elig_nonprofit,
+  judge_notes  -- admin-written note shown to judges beside the application
 ) ON public.applications TO authenticated;
 
 DROP POLICY IF EXISTS applications_judge_select ON public.applications;
@@ -148,7 +150,33 @@ CREATE POLICY applications_judge_select ON public.applications FOR SELECT TO aut
   USING (
     status = ANY (ARRAY['approved','in_judging','finalist','winner'])
     AND EXISTS (SELECT 1 FROM public.judges j WHERE j.id = auth.uid() AND j.active = true)
+    -- ...and only applications the admin assigned to this judge (see
+    -- judge_assignments below; migration 2026-11-21).
+    AND EXISTS (
+      SELECT 1 FROM public.judge_assignments ja
+      WHERE ja.judge_id = auth.uid() AND ja.application_id = applications.id
+    )
   );
+
+-- ---------------------------------------------------------------------------
+-- judge_assignments — which judge scores which application. Managed by the
+-- admin dashboard through the service-role `admin-assignments` function; a
+-- judge may only read their own rows. Full script:
+-- db/migrations/2026-11-21-judge-assignments.sql
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.judge_assignments (
+  judge_id       uuid NOT NULL REFERENCES public.judges(id)       ON DELETE CASCADE,
+  application_id uuid NOT NULL REFERENCES public.applications(id) ON DELETE CASCADE,
+  assigned_at    timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (judge_id, application_id)
+);
+CREATE INDEX IF NOT EXISTS judge_assignments_application_idx ON public.judge_assignments (application_id);
+ALTER TABLE public.judge_assignments ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.judge_assignments FROM anon, authenticated;
+GRANT SELECT ON public.judge_assignments TO authenticated;
+DROP POLICY IF EXISTS judge_assignments_self_select ON public.judge_assignments;
+CREATE POLICY judge_assignments_self_select ON public.judge_assignments FOR SELECT TO authenticated
+  USING (judge_id = auth.uid());
 
 -- ---------------------------------------------------------------------------
 -- application_attachments — anon may INSERT metadata only for a real application
@@ -160,11 +188,17 @@ CREATE POLICY anon_insert_attachments ON public.application_attachments FOR INSE
 
 -- ---------------------------------------------------------------------------
 -- scores — a judge may read/insert/update only their OWN scores, only while an
--- ACTIVE judge, and may only edit DRAFT rows. judge_id is pinned to auth.uid().
+-- ACTIVE judge, may only start a score for an ASSIGNED application, and may
+-- only edit DRAFT rows. judge_id is pinned to auth.uid().
 -- ---------------------------------------------------------------------------
 DROP POLICY IF EXISTS scores_self_insert ON public.scores;
 CREATE POLICY scores_self_insert ON public.scores FOR INSERT TO authenticated
-  WITH CHECK (judge_id = auth.uid() AND EXISTS (SELECT 1 FROM public.judges j WHERE j.id = auth.uid() AND j.active = true));
+  WITH CHECK (
+    judge_id = auth.uid()
+    AND EXISTS (SELECT 1 FROM public.judges j WHERE j.id = auth.uid() AND j.active = true)
+    AND EXISTS (SELECT 1 FROM public.judge_assignments ja
+                WHERE ja.judge_id = auth.uid() AND ja.application_id = scores.application_id)
+  );
 DROP POLICY IF EXISTS scores_self_select ON public.scores;
 CREATE POLICY scores_self_select ON public.scores FOR SELECT TO authenticated
   USING (judge_id = auth.uid() AND EXISTS (SELECT 1 FROM public.judges j WHERE j.id = auth.uid() AND j.active = true));

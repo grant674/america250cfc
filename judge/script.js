@@ -158,6 +158,8 @@
   async function fetchApplications() {
     // Blind review (#6): no applicant/org identity columns — the queue
     // identifies applications by project title only.
+    // RLS returns only the applications the admin ASSIGNED to this judge
+    // (judge_assignments), so no assignment filter is needed here.
     var fields = [
       'id', 'created_at', 'status',
       'proj_title', 'proj_summary', 'proj_category', 'proj_phase',
@@ -239,7 +241,7 @@
     document.getElementById('progress-fill').style.width = pct + '%';
 
     // Lede line
-    var lede = counts.all + ' application' + (counts.all === 1 ? '' : 's') + ' in the scoring queue. ' +
+    var lede = counts.all + ' application' + (counts.all === 1 ? '' : 's') + ' assigned to you. ' +
                counts.todo + ' not started, ' +
                counts.draft + ' in progress, ' +
                counts.submitted + ' submitted.';
@@ -249,6 +251,13 @@
     var list = document.getElementById('queue-list');
     if (filtered.length === 0) {
       list.innerHTML = '';
+      // Nothing assigned at all vs. nothing under this filter.
+      document.getElementById('queue-empty-h').textContent =
+        counts.all === 0 ? 'No applications assigned to you yet.' : 'Nothing under this filter.';
+      document.getElementById('queue-empty-p').textContent =
+        counts.all === 0
+          ? 'The program team assigns finalists to each judge. Yours will appear here as soon as they are assigned.'
+          : 'Choose another filter above to see the rest of your assigned applications.';
       document.getElementById('queue-empty').hidden = false;
       return;
     }
