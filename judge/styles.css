@@ -420,3 +420,30 @@
   margin: 0 0 8px;
 }
 .queue-empty p { color: var(--fg-65); margin: 0; }
+
+/* Download-all (PDF packet) row above the queue list */
+.queue-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0 0 18px;
+}
+.queue-pdf {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-blue);
+  background: var(--c-white);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+.queue-pdf:hover { border-color: var(--c-blue); background: var(--c-gray); }
+.queue-pdf:disabled { opacity: 0.55; cursor: default; }
+.queue-tools__note { font-family: var(--font); font-size: 13px; color: var(--fg-65); }
+.queue-tools__note.is-err { color: var(--c-red); }

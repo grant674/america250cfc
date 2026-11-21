@@ -266,6 +266,9 @@
                counts.submitted + ' submitted.';
     document.getElementById('queue-lede').textContent = lede;
 
+    // PDF packet button: only when there is something assigned.
+    document.getElementById('queue-tools').hidden = counts.all === 0;
+
     // Render list
     var list = document.getElementById('queue-list');
     if (filtered.length === 0) {
@@ -446,6 +449,39 @@
   document.getElementById('btn-signout').addEventListener('click', signOut);
   document.getElementById('btn-retry').addEventListener('click', function () {
     bootstrap();
+  });
+
+  // ---- Download every assigned application + score sheet as one PDF ----
+  // Fetches the full application text (the queue only loads a summary) and
+  // this judge's scores with comments, so anything already entered in the
+  // portal is pre-filled. RLS limits both to this judge's assignments.
+  var PDF_NOTE = document.getElementById('pdf-all-note').textContent;
+  document.getElementById('btn-pdf-all').addEventListener('click', async function () {
+    var btn = this, note = document.getElementById('pdf-all-note');
+    if (!window.CFCJudgePdf) return;
+    var label = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Preparing PDF…';
+    note.textContent = PDF_NOTE; note.className = 'queue-tools__note';
+    try {
+      var results = await Promise.all([
+        sbFetch('/rest/v1/applications?status=in.(in_judging,approved,finalist,winner)' +
+          '&select=' + window.CFCJudgePdf.FIELDS + '&order=created_at.asc,id.asc'),
+        sbFetch('/rest/v1/scores?judge_id=eq.' + encodeURIComponent(state.session.user_id) +
+          '&select=application_id,dim_community,dim_innovation,dim_feasibility,dim_sustainability,dim_founder_team,total,comments,status'),
+      ]);
+      if (!results[0].ok || !results[1].ok) throw new Error('Could not load applications.');
+      var apps = await results[0].json();
+      var byApp = {};
+      (await results[1].json()).forEach(function (s) { byApp[s.application_id] = s; });
+      if (!apps.length) throw new Error('No applications assigned.');
+      await window.CFCJudgePdf.downloadPacket(apps, byApp, state.judge && state.judge.name);
+    } catch (err) {
+      console.error('PDF error:', err);
+      note.textContent = 'Could not create the PDF. Please try again.';
+      note.className = 'queue-tools__note is-err';
+    } finally {
+      btn.disabled = false; btn.textContent = label;
+    }
   });
 
   document.querySelectorAll('[data-queue-filter]').forEach(function (b) {

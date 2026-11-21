@@ -19,7 +19,7 @@ function OptanonWrapper() { }
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="preconnect" href="https://emhcsinxtxshdgiceofa.supabase.co" />
 <link rel="stylesheet" href="/styles.css?v=15" />
-<link rel="stylesheet" href="/judge/styles.css?v=3" />
+<link rel="stylesheet" href="/judge/styles.css?v=4" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="judge-body">
@@ -119,6 +119,11 @@ function OptanonWrapper() { }
       <button type="button" class="queue-pill" data-queue-filter="all">All <span id="cnt-all">0</span></button>
     </div>
 
+    <div class="queue-tools" id="queue-tools" hidden>
+      <button type="button" class="queue-pdf" id="btn-pdf-all">Download all as PDF</button>
+      <span class="queue-tools__note" id="pdf-all-note">Every application assigned to you, each with a score sheet, in one file.</span>
+    </div>
+
     <ul class="queue-list" id="queue-list"></ul>
 
     <div class="queue-empty" id="queue-empty" hidden>
@@ -139,6 +144,7 @@ function OptanonWrapper() { }
 
 </main>
 
-<script src="/judge/script.js?v=5" defer></script>
+<script src="/judge/pdf.js?v=1" defer></script>
+<script src="/judge/script.js?v=6" defer></script>
 </body>
 </html>

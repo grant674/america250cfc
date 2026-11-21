@@ -19,8 +19,8 @@ function OptanonWrapper() { }
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="preconnect" href="https://emhcsinxtxshdgiceofa.supabase.co" />
 <link rel="stylesheet" href="/styles.css?v=15" />
-<link rel="stylesheet" href="/judge/styles.css?v=3" />
-<link rel="stylesheet" href="/judge/score/styles.css?v=4" />
+<link rel="stylesheet" href="/judge/styles.css?v=4" />
+<link rel="stylesheet" href="/judge/score/styles.css?v=5" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="judge-body">
@@ -69,7 +69,11 @@ function OptanonWrapper() { }
   <!-- Score view -->
   <section class="score-view" id="score-view" hidden>
     <div class="score-topbar">
-      <a class="score-back" href="/judge/">← Back to queue</a>
+      <div class="score-topbar__left">
+        <a class="score-back" href="/judge/">← Back to queue</a>
+        <button type="button" class="score-pdf" id="btn-pdf">Download PDF score sheet</button>
+        <span class="score-pdf__msg" id="pdf-msg" aria-live="polite"></span>
+      </div>
       <nav class="score-nav" data-score-nav aria-label="Move between your assigned applications" hidden></nav>
     </div>
 
@@ -140,6 +144,7 @@ function OptanonWrapper() { }
   </div>
 </div>
 
-<script src="/judge/score/script.js?v=7" defer></script>
+<script src="/judge/pdf.js?v=1" defer></script>
+<script src="/judge/score/script.js?v=8" defer></script>
 </body>
 </html>
