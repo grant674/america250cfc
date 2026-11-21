@@ -67,6 +67,7 @@
     saveTimer: null,
     saveInFlight: false,
     pendingChanges: false,
+    nav: null,          // { ids: [...], titles: {id: title}, status: {id: score status} }
   };
 
   // ---- Session ----
@@ -129,6 +130,26 @@
     if (!res.ok) throw new Error('Could not load score row.');
     var rows = await res.json();
     return rows[0] || null;
+  }
+
+  // Everything assigned to this judge, in a fixed order (oldest submission
+  // first, the same base order as the queue), plus this judge's score status
+  // for each. Drives the Previous / Next controls. RLS limits both queries to
+  // this judge's own assignments and scores.
+  async function fetchNav() {
+    var results = await Promise.all([
+      sbFetch('/rest/v1/applications?status=in.(in_judging,approved,finalist,winner)' +
+        '&select=id,proj_title,created_at&order=created_at.asc,id.asc'),
+      sbFetch('/rest/v1/scores?judge_id=eq.' + encodeURIComponent(state.session.user_id) +
+        '&select=application_id,status'),
+    ]);
+    if (!results[0].ok || !results[1].ok) throw new Error('Could not load the application list.');
+    var apps = await results[0].json();
+    var scores = await results[1].json();
+    var nav = { ids: [], titles: {}, status: {} };
+    apps.forEach(function (a) { nav.ids.push(a.id); nav.titles[a.id] = a.proj_title || 'Untitled application'; });
+    scores.forEach(function (sc) { nav.status[sc.application_id] = sc.status; });
+    return nav;
   }
 
   // Insert if no row yet; PATCH otherwise. Returns the resulting row.
@@ -270,6 +291,71 @@
   }
 
   // ---- Render: header ----
+  // ---- Render: previous / next ----
+  function scoreUrl(id) { return '/judge/score/?id=' + encodeURIComponent(id); }
+  function isDone(status) { return status === 'submitted' || status === 'recused'; }
+
+  function renderNav() {
+    var bars = document.querySelectorAll('[data-score-nav]');
+    var nextEl = document.getElementById('locked-next');
+    var nav = state.nav;
+    var idx = nav ? nav.ids.indexOf(state.appId) : -1;
+    if (idx === -1) {
+      bars.forEach(function (b) { b.hidden = true; });
+      nextEl.hidden = true;
+      return;
+    }
+    // Keep this application's status current after a submit / recuse here.
+    if (state.score) nav.status[state.appId] = state.score.status;
+
+    function btn(id, label, rel) {
+      if (!id) return '<span class="score-nav__btn is-disabled" aria-disabled="true">' + label + '</span>';
+      return '<a class="score-nav__btn" rel="' + rel + '" data-nav-link href="' + scoreUrl(id) + '" title="' +
+        escHtml(nav.titles[id]) + '">' + label + '</a>';
+    }
+    var html =
+      btn(nav.ids[idx - 1], '← Previous', 'prev') +
+      '<span class="score-nav__pos">Application ' + (idx + 1) + ' of ' + nav.ids.length + '</span>' +
+      btn(nav.ids[idx + 1], 'Next →', 'next');
+    bars.forEach(function (b) { b.innerHTML = html; b.hidden = false; });
+
+    // In the "locked" panel (after submit / recuse): jump straight to the next
+    // application that still needs a score, looking forward then wrapping round.
+    var todo = null;
+    for (var i = 1; i < nav.ids.length; i++) {
+      var cand = nav.ids[(idx + i) % nav.ids.length];
+      if (!isDone(nav.status[cand])) { todo = cand; break; }
+    }
+    if (todo) {
+      nextEl.innerHTML = '<a data-nav-link href="' + scoreUrl(todo) + '">Next to score: ' + escHtml(nav.titles[todo]) + ' →</a>';
+    } else {
+      nextEl.textContent = 'You have finished every application assigned to you.';
+    }
+    nextEl.hidden = false;
+  }
+
+  // Moving to another application reloads the page, so make sure any score
+  // change still waiting on the auto-save timer is written first.
+  async function flushSaves() {
+    clearTimeout(state.saveTimer);
+    for (var i = 0; i < 100 && (state.pendingChanges || state.saveInFlight); i++) {
+      if (state.saveInFlight) await new Promise(function (r) { setTimeout(r, 100); });
+      else if ((await doSave()) === false) return false;
+    }
+    return !(state.pendingChanges || state.saveInFlight);
+  }
+  document.addEventListener('click', async function (e) {
+    var link = e.target.closest && e.target.closest('a[data-nav-link]');
+    if (!link) return;
+    if (!state.pendingChanges && !state.saveInFlight) return;   // nothing to save: normal navigation
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; // new tab: this page stays open and keeps saving
+    e.preventDefault();
+    var saved = await flushSaves();
+    if (saved || window.confirm('Your latest changes on this application could not be saved. Leave anyway?')) {
+      window.location.href = link.href;
+    }
+  });
+
   function renderHead() {
     var a = state.app;
     document.getElementById('app-id-short').textContent = a.id.slice(0, 8) + '…' + a.id.slice(-4);
@@ -444,10 +530,12 @@
       setSaveStatus('saved');
       // If more changes happened during save, kick another one
       if (state.pendingChanges) doSave();
+      return true;
     } catch (err) {
       console.error('Save error:', err);
       setSaveStatus('error', 'Save failed — retrying…');
       setTimeout(function () { scheduleSave(); }, 2000);
+      return false;
     } finally {
       state.saveInFlight = false;
     }
@@ -523,6 +611,7 @@
       state.score = row;
       renderHead();
       renderPanel();
+      renderNav();
       setSaveStatus('saved');
     } catch (err) {
       setSaveStatus('error', 'Submit failed.');
@@ -551,6 +640,7 @@
       state.score = row;
       renderHead();
       renderPanel();
+      renderNav();
       setSaveStatus('saved');
     } catch (err) {
       setSaveStatus('error', 'Recuse failed.');
@@ -616,6 +706,11 @@
       renderRead();
       renderPanel();
       show('view');
+
+      // Previous / next: loaded after the page is up, and optional. If the
+      // list can't be loaded the controls simply stay hidden.
+      fetchNav().then(function (nav) { state.nav = nav; renderNav(); })
+        .catch(function (err) { console.warn('Nav load failed:', err); });
     } catch (err) {
       console.error('Bootstrap error:', err);
       document.getElementById('error-msg').textContent = err.message || 'Unknown error.';

@@ -20,7 +20,7 @@ function OptanonWrapper() { }
 <link rel="preconnect" href="https://emhcsinxtxshdgiceofa.supabase.co" />
 <link rel="stylesheet" href="/styles.css?v=15" />
 <link rel="stylesheet" href="/judge/styles.css?v=3" />
-<link rel="stylesheet" href="/judge/score/styles.css?v=3" />
+<link rel="stylesheet" href="/judge/score/styles.css?v=4" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="judge-body">
@@ -68,7 +68,10 @@ function OptanonWrapper() { }
 
   <!-- Score view -->
   <section class="score-view" id="score-view" hidden>
-    <a class="score-back" href="/judge/">← Back to queue</a>
+    <div class="score-topbar">
+      <a class="score-back" href="/judge/">← Back to queue</a>
+      <nav class="score-nav" data-score-nav aria-label="Move between your assigned applications" hidden></nav>
+    </div>
 
     <header class="score-head">
       <div class="score-head__meta">
@@ -112,10 +115,13 @@ function OptanonWrapper() { }
           <span class="rule-bar" aria-hidden="true"></span>
           <h3 id="locked-h">Submitted</h3>
           <p id="locked-p">Your scores are submitted and locked. Contact the admin if you need to change them.</p>
+          <p class="score-locked__next" id="locked-next" hidden></p>
         </div>
       </aside>
 
     </div>
+
+    <nav class="score-nav score-nav--bottom" data-score-nav aria-label="Move between your assigned applications" hidden></nav>
   </section>
 
 </main>
@@ -134,6 +140,6 @@ function OptanonWrapper() { }
   </div>
 </div>
 
-<script src="/judge/score/script.js?v=6" defer></script>
+<script src="/judge/score/script.js?v=7" defer></script>
 </body>
 </html>

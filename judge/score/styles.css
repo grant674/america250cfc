@@ -16,6 +16,59 @@
 }
 .score-back:hover { color: var(--c-red); }
 
+/* Previous / next between the judge's assigned applications */
+.score-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 20px;
+  margin: 0 0 20px;
+}
+.score-topbar .score-back { margin: 0; }
+.score-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font);
+}
+.score-nav--bottom {
+  justify-content: center;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.score-nav__pos {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg-65);
+  white-space: nowrap;
+  padding: 0 4px;
+}
+.score-nav__btn {
+  display: inline-block;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--c-blue);
+  background: var(--c-white);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  white-space: nowrap;
+  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+a.score-nav__btn:hover { border-color: var(--c-blue); background: var(--c-gray); }
+.score-nav__btn.is-disabled { color: var(--fg-45); border-color: var(--line); cursor: default; }
+.score-locked__next { margin-top: 14px; }
+.score-locked__next a {
+  font-weight: 700;
+  color: var(--c-blue);
+}
+
 .score-head { margin-bottom: 28px; }
 .score-head__meta {
   display: flex;
