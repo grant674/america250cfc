@@ -303,6 +303,16 @@ a.score-nav__btn:hover { border-color: var(--c-blue); background: var(--c-gray);
   color: var(--c-blue);
   letter-spacing: -0.01em;
 }
+.score-total-wrap { text-align: right; }
+.score-total-wrap .score-total { justify-content: flex-end; }
+.score-total__note {
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--fg-65);
+  margin-top: 4px;
+  white-space: nowrap;
+}
+.score-total-wrap.is-partial .score-total__num { color: var(--fg-65); }
 .score-total__lab {
   font-family: var(--font);
   font-weight: 700;
