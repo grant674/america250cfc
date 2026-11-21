@@ -189,6 +189,8 @@ export const handler = async (event) => {
   let inboxRows = [];
   let outboundRows = [];
   let auditRows = [];
+  // null = judge_assignments table not there yet (migration not applied).
+  let assignmentRows = null;
   try {
     const sbHeaders = {
       apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -197,18 +199,20 @@ export const handler = async (event) => {
     // Inbox: skip the heavy raw_payload + html_body in the list payload —
     // they're refetched per-row when the admin opens detail (admin-inbox-get).
     const inboxFields = "id,received_at,to_alias,to_address,from_address,from_name,subject,snippet,status,read_at,replied_at,attachments,message_id";
-    const [scoresRes, judgesRes, inboxRes, outboundRes, auditRes] = await Promise.all([
+    const [scoresRes, judgesRes, inboxRes, outboundRes, auditRes, assignRes] = await Promise.all([
       fetch(`${SUPABASE_URL}/rest/v1/scores?select=id,judge_id,application_id,dim_community,dim_innovation,dim_feasibility,dim_sustainability,dim_founder_team,total,status,submitted_at`, { headers: sbHeaders }),
       fetch(`${SUPABASE_URL}/rest/v1/judges?select=id,name,email,affiliation,active&order=name.asc`, { headers: sbHeaders }),
       fetch(`${SUPABASE_URL}/rest/v1/inbound_emails?select=${inboxFields}&order=received_at.desc&limit=2000`, { headers: sbHeaders }),
       fetch(`${SUPABASE_URL}/rest/v1/outbound_replies?select=id,in_reply_to_id,from_alias,to_address,subject,sent_at,status&order=sent_at.desc&limit=300`, { headers: sbHeaders }),
       fetch(`${SUPABASE_URL}/rest/v1/audit_log?select=id,at,actor,action,target_table,target_id,before_data,after_data,notes&order=at.desc&limit=100`, { headers: sbHeaders }),
+      fetch(`${SUPABASE_URL}/rest/v1/judge_assignments?select=judge_id,application_id&limit=20000`, { headers: sbHeaders }),
     ]);
     if (scoresRes.ok)   scoresRows   = await scoresRes.json();
     if (judgesRes.ok)   judgesRows   = await judgesRes.json();
     if (inboxRes.ok)    inboxRows    = await inboxRes.json();
     if (outboundRes.ok) outboundRows = await outboundRes.json();
     if (auditRes.ok)    auditRows    = await auditRes.json();
+    if (assignRes.ok)   assignmentRows = await assignRes.json();
   } catch (err) {
     console.warn("Scores/judges/inbox fetch failed (non-fatal):", err?.message || err);
   }
@@ -274,14 +278,22 @@ export const handler = async (event) => {
     };
   }
 
-  // Per-judge progress (across applications currently in any scoring phase)
-  const inJudgingIds = new Set(rows
-    .filter(r => ["approved", "in_judging", "finalist", "winner"].includes(r.status))
-    .map(r => r.id));
-  const judgesProgress = judgesRows
-    .filter(j => j.active)
+  // Judging pool = applications the admin has sent to judging (the finalists).
+  // Per-judge progress counts only the pool applications ASSIGNED to that
+  // judge. If the assignments table isn't there yet (migration not applied),
+  // fall back to the old "every judge scores the whole pool" numbers.
+  const POOL_STATUSES = ["in_judging", "finalist", "winner"];
+  const poolIds = new Set(rows.filter(r => POOL_STATUSES.includes(r.status)).map(r => r.id));
+  const assignedByJudge = {};
+  for (const a of assignmentRows || []) {
+    if (!poolIds.has(a.application_id)) continue;
+    (assignedByJudge[a.judge_id] = assignedByJudge[a.judge_id] || new Set()).add(a.application_id);
+  }
+  const activeJudges = judgesRows.filter(j => j.active);
+  const judgesProgress = activeJudges
     .map((j) => {
-      const myScores = scoresRows.filter(s => s.judge_id === j.id && inJudgingIds.has(s.application_id));
+      const mine = assignmentRows ? (assignedByJudge[j.id] || new Set()) : poolIds;
+      const myScores = scoresRows.filter(s => s.judge_id === j.id && mine.has(s.application_id));
       const submittedCount = myScores.filter(s => s.status === "submitted").length;
       const draftCount = myScores.filter(s => s.status === "draft").length;
       const recusedCount = myScores.filter(s => s.status === "recused").length;
@@ -290,12 +302,22 @@ export const handler = async (event) => {
         name: j.name,
         email: j.email,
         affiliation: j.affiliation,
-        total: inJudgingIds.size,
+        total: mine.size,
         submitted: submittedCount,
         draft: draftCount,
         recused: recusedCount,
       };
     });
+
+  // Assignment matrix data for the admin "Assignments" panel: every
+  // (judge, application) pair, plus the score status for any pair that has one
+  // so the admin can see what un-assigning would hide.
+  const judging = {
+    ready: assignmentRows !== null,
+    judges: activeJudges.map(j => ({ id: j.id, name: j.name, email: j.email, affiliation: j.affiliation })),
+    assignments: (assignmentRows || []).map(a => [a.judge_id, a.application_id]),
+    score_status: scoresRows.map(s => [s.judge_id, s.application_id, s.status]),
+  };
 
   // Inbox stats — by-alias + by-status counts for the new admin section.
   // Archived rows are included in `inbox` (so the admin can view and restore
@@ -314,6 +336,7 @@ export const handler = async (event) => {
       rows,
       stats,
       judges_progress: judgesProgress,
+      judging,
       inbox: inboxRows,
       inbox_stats: inboxStats,
       outbound_replies: outboundRows,

@@ -1,3 +1,14 @@
+/* Judge sign-in safety net: if an emailed sign-in link lands on a page other
+   than /judge/ (older links fall back to the site home page), forward it to
+   the judge portal with its token intact instead of silently dropping it. */
+(function () {
+  var h = window.location.hash || '';
+  if (window.location.pathname.indexOf('/judge') === 0) return;
+  if (/[#&](access_token|error_code)=/.test(h) && /[#&](type=(magiclink|invite|recovery|signup)|error_code=)/.test(h)) {
+    window.location.replace('/judge/' + h);
+  }
+})();
+
 (function () {
   'use strict';
 

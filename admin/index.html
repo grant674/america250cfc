@@ -30,7 +30,7 @@ function OptanonWrapper() { }
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="/styles.css?v=15" />
-<link rel="stylesheet" href="/admin/styles.css?v=9" />
+<link rel="stylesheet" href="/admin/styles.css?v=10" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="admin-body">
@@ -116,16 +116,44 @@ function OptanonWrapper() { }
   </div>
 </section>
 
-<!-- ============== JUDGING PROGRESS ============== -->
-<section class="container admin-judging" id="admin-judging" aria-label="Judging progress" hidden>
+<!-- ============== JUDGING: progress + assignments ============== -->
+<section class="container admin-judging" id="admin-judging" aria-label="Judging">
   <div class="admin-judging__head">
     <div>
-      <h2 class="admin-judging__h">Judging progress</h2>
+      <h2 class="admin-judging__h">Judging</h2>
       <p class="admin-judging__sub" id="judging-sub">—</p>
     </div>
-    <button type="button" class="admin-judging__toggle" id="btn-toggle-judging" aria-expanded="true" aria-controls="judging-grid">Hide</button>
+    <button type="button" class="admin-judging__toggle" id="btn-toggle-judging" aria-expanded="true" aria-controls="judging-body">Hide</button>
   </div>
-  <div class="judging-grid" id="judging-grid"></div>
+  <div id="judging-body">
+    <div class="judging-grid" id="judging-grid"></div>
+
+    <div class="assign" id="assign-panel">
+      <div class="assign__head">
+        <div>
+          <h3 class="assign__h">Assignments</h3>
+          <p class="assign__sub" id="assign-sub">—</p>
+        </div>
+        <div class="assign__actions" id="assign-actions" hidden>
+          <button type="button" class="admin-judging__toggle" id="assign-all">Assign all to every judge</button>
+          <button type="button" class="admin-judging__toggle" id="assign-none">Clear all</button>
+          <button type="button" class="admin-judging__toggle" id="assign-discard" hidden>Discard changes</button>
+          <button type="button" class="assign__save" id="assign-save" disabled>Save assignments</button>
+        </div>
+      </div>
+      <p class="assign__msg" id="assign-msg" aria-live="polite"></p>
+      <p class="assign__note" id="assign-note" hidden></p>
+      <div class="assign__scroll" id="assign-scroll" hidden>
+        <table class="assign-table" id="assign-table"></table>
+      </div>
+      <p class="assign__legend" id="assign-legend" hidden>
+        Judges only see the applications ticked for them, and never see applicant or organization names.
+        <span class="assign-mark assign-mark--submitted">S</span> scored
+        <span class="assign-mark assign-mark--draft">D</span> scoring in progress
+        <span class="assign-mark assign-mark--recused">R</span> recused
+      </p>
+    </div>
+  </div>
 </section>
 
 <!-- ============== INBOX ============== -->
@@ -509,6 +537,6 @@ function OptanonWrapper() { }
   </div>
 </div>
 
-<script src="/admin/script.js?v=15" defer></script>
+<script src="/admin/script.js?v=16" defer></script>
 </body>
 </html>
