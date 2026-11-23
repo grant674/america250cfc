@@ -62,6 +62,17 @@
   [headers.values]
     Cache-Control = "public,max-age=0,must-revalidate"
 
+# --- Applications closed ---
+# /closed/ is the "applications are closed, sign up for next year" page. To put
+# it live once the deadline passes (11:59 PM ET, November 30, 2026), uncomment
+# this block and deploy: every /apply/ visit, including saved-draft links, then
+# lands on /closed/. Leave it commented while applications are open.
+# [[redirects]]
+#   from = "/apply/*"
+#   to = "/closed/"
+#   status = 302
+#   force = true
+
 # NOTE: The canonical-host 301 (aliases -> america250cfc.org) and the
 # two-tier password gate are implemented in netlify/edge-functions/auth.ts,
 # NOT here. Pretty-URL trailing-slash redirects (/apply -> /apply/) are

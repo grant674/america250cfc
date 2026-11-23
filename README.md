@@ -21,6 +21,9 @@ an edge auth gate, backed by Supabase, Resend, and Anthropic.
 - Public form (`/apply/`) → **Cloudflare Turnstile** verified by `submit-application`
   → inserted via service role → an `AFTER INSERT` trigger runs AI screening
   (`screen-application` → Claude) → confirmation email via Resend.
+- When applications close: `/closed/` says so and collects emails for next year
+  (same `notify-signup` function, stored with `source = next_cycle_2027`). It goes
+  live by uncommenting the `/apply/*` redirect in `netlify.toml` and deploying.
 - Judges sign in via magic link (`/judge/`), score blind (applicant identity is
   withheld at the DB level), data gated by Supabase RLS. A judge sees only the
   applications assigned to them.
