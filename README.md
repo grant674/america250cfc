@@ -28,7 +28,9 @@ an edge auth gate, backed by Supabase, Resend, and Anthropic.
   **Send to judging** → **Invite judge** for each judge → in **Judging →
   Assignments** tick which judge scores which finalist (or *Assign all to every
   judge*) → **Save assignments**. Stored in `judge_assignments`
-  (`admin-assignments` function); schema + RLS in
+  (`admin-assignments` function). The link beside each tick opens a score
+  editor for entering or correcting a judge's scores on their behalf
+  (`admin-score` function, audit-logged). Schema + RLS in
   [`db/migrations/2026-11-21-judge-assignments.sql`](db/migrations/2026-11-21-judge-assignments.sql).
 - Staff `/admin/` dashboard (separate password) lists applications, scores, inbox,
   audit log; can re-screen, bulk-update status, notify finalists/winners.

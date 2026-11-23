@@ -316,7 +316,8 @@ export const handler = async (event) => {
     ready: assignmentRows !== null,
     judges: activeJudges.map(j => ({ id: j.id, name: j.name, email: j.email, affiliation: j.affiliation })),
     assignments: (assignmentRows || []).map(a => [a.judge_id, a.application_id]),
-    score_status: scoresRows.map(s => [s.judge_id, s.application_id, s.status]),
+    // [judge, application, status, total] — total is null until all five are scored.
+    score_status: scoresRows.map(s => [s.judge_id, s.application_id, s.status, s.total]),
   };
 
   // Inbox stats — by-alias + by-status counts for the new admin section.

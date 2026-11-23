@@ -30,7 +30,7 @@ function OptanonWrapper() { }
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="/styles.css?v=15" />
-<link rel="stylesheet" href="/admin/styles.css?v=10" />
+<link rel="stylesheet" href="/admin/styles.css?v=11" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="admin-body">
@@ -82,6 +82,37 @@ function OptanonWrapper() { }
         <button type="submit" class="invite-submit" id="invite-submit">Send invite</button>
         <span class="invite-msg" id="invite-msg"></span>
       </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============== ENTER / EDIT A JUDGE'S SCORE (admin, on the judge's behalf) ============== -->
+<div class="invite-modal" id="score-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="score-modal-title">
+  <div class="invite-modal__scrim" data-score-close></div>
+  <div class="invite-modal__panel score-modal__panel" role="document">
+    <button class="invite-modal__close" type="button" data-score-close aria-label="Close">×</button>
+    <span class="rule-bar" aria-hidden="true"></span>
+    <h2 id="score-modal-title" class="invite-modal__title">Enter scores</h2>
+    <p class="invite-modal__sub" id="score-modal-sub">—</p>
+    <form id="score-form" class="invite-form" novalidate>
+      <div class="score-edit" id="score-edit-rows"></div>
+      <div class="score-edit__total">
+        <span>Weighted total</span>
+        <strong id="score-edit-total">—</strong>
+      </div>
+      <label class="invite-label">
+        Save as
+        <select id="score-edit-status">
+          <option value="submitted">Final (counts in results; locked for the judge)</option>
+          <option value="draft">Draft (judge can still edit in the portal)</option>
+          <option value="recused">Recused (no score recorded)</option>
+        </select>
+      </label>
+      <div class="invite-form__row">
+        <button type="submit" class="invite-submit" id="score-edit-save">Save scores</button>
+        <span class="invite-msg" id="score-edit-msg"></span>
+      </div>
+      <p class="score-edit__note">Saved on the judge's behalf and recorded in the audit log.</p>
     </form>
   </div>
 </div>
@@ -148,9 +179,11 @@ function OptanonWrapper() { }
       </div>
       <p class="assign__legend" id="assign-legend" hidden>
         Judges only see the applications ticked for them, and never see applicant or organization names.
-        <span class="assign-mark assign-mark--submitted">S</span> scored
-        <span class="assign-mark assign-mark--draft">D</span> scoring in progress
-        <span class="assign-mark assign-mark--recused">R</span> recused
+        The link beside each tick shows that judge's score
+        (<span class="assign-score assign-score--submitted">71.5</span> final,
+        <span class="assign-score assign-score--draft">draft</span>,
+        <span class="assign-score assign-score--recused">recused</span>, or
+        <span class="assign-score">enter</span> if none yet). Click it to enter or edit scores for a judge who cannot use the portal.
       </p>
     </div>
   </div>
@@ -537,6 +570,6 @@ function OptanonWrapper() { }
   </div>
 </div>
 
-<script src="/admin/script.js?v=16" defer></script>
+<script src="/admin/script.js?v=17" defer></script>
 </body>
 </html>
