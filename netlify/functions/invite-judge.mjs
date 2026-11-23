@@ -160,7 +160,7 @@ export const handler = async (event) => {
   if (!userId) {
     // Look up the existing auth.users row by email.
     const lookupRes = await fetch(
-      `${SUPABASE_URL}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
+      `${SUPABASE_URL}/auth/v1/admin/users?page=1&per_page=1000`,
       {
         headers: {
           apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -174,7 +174,10 @@ export const handler = async (event) => {
       return { statusCode: 502, headers: noStoreHeaders(), body: JSON.stringify({ error: "lookup_failed" }) };
     }
     const lookupData = await lookupRes.json();
-    userId = lookupData?.users?.[0]?.id;
+    // The admin list endpoint does not filter by email, so pick the exact
+    // match ourselves (taking the first row could attach the judge record to
+    // someone else's account).
+    userId = (lookupData?.users || []).find((u) => (u.email || "").toLowerCase() === email)?.id;
     if (!userId) {
       return { statusCode: 502, headers: noStoreHeaders(), body: JSON.stringify({ error: "user_not_resolved" }) };
     }
