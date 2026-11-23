@@ -4,7 +4,6 @@
    /styles.css.
    ============================================================ */
 
-.closed-hero { border-bottom: none; }
 .closed-tag {
   display: inline-block;
   margin-bottom: 20px;
@@ -110,7 +109,7 @@
   gap: 16px;
 }
 .closed-step {
-  background: var(--c-gray);
+  background: var(--c-white);
   border-radius: var(--radius-md);
   border-top: 3px solid var(--c-blue);
   padding: 24px;
