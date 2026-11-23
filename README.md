@@ -21,9 +21,10 @@ an edge auth gate, backed by Supabase, Resend, and Anthropic.
 - Public form (`/apply/`) → **Cloudflare Turnstile** verified by `submit-application`
   → inserted via service role → an `AFTER INSERT` trigger runs AI screening
   (`screen-application` → Claude) → confirmation email via Resend.
-- When applications close: `/closed/` says so and collects emails for next year
-  (same `notify-signup` function, stored with `source = next_cycle_2027`). It goes
-  live by uncommenting the `/apply/*` redirect in `netlify.toml` and deploying.
+- When applications close: the "closed, sign up for next year" page is at `/demo/`
+  for review, behind its own passcode (`DEMO_PASSWORD`, edge function). Signups go
+  through `notify-signup`, stored with `source = next_cycle_2027`. Launch steps are
+  in the "Applications closed" note in `netlify.toml`.
 - Judges sign in via magic link (`/judge/`), score blind (applicant identity is
   withheld at the DB level), data gated by Supabase RLS. A judge sees only the
   applications assigned to them.
@@ -49,7 +50,7 @@ changed CSS/JS so browsers refetch. DB/RLS changes are applied in Supabase (see
 `db/security-model.sql`) — they are not part of the Netlify deploy.
 
 ## Secrets (Netlify env vars — never commit)
-`SITE_PASSWORD`, `ADMIN_PASSWORD`, `NN_AUTH_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`,
+`SITE_PASSWORD`, `ADMIN_PASSWORD`, `TOUR_PASSWORD`, `DEMO_PASSWORD`, `NN_AUTH_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`,
 `SUPABASE_ANON_KEY` (public by design), `ANTHROPIC_API_KEY`, `RESEND_API_KEY`,
 `RESEND_INBOUND_SIGNING_SECRET`, `SCREENING_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY`.
 Tunable: `SCREENING_HOURLY_CAP` (default 200).
