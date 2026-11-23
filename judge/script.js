@@ -351,6 +351,18 @@
 
     renderQueue();
     show('queue');
+
+    // Arrived from the "Upload scores to the portal" button inside a PDF:
+    // point at the upload button (a browser will not open the file chooser
+    // without a click).
+    if (window.location.hash === '#upload' && state.applications.length) {
+      history.replaceState(null, '', window.location.pathname);
+      var up = document.getElementById('btn-pdf-upload');
+      up.classList.add('is-highlight');
+      up.focus();
+      var hint = document.getElementById('pdf-all-note');
+      hint.textContent = 'Choose "Upload filled-in PDF" and pick the score sheet you saved.';
+    }
   }
 
   async function bootstrap() {
@@ -483,6 +495,189 @@
     } finally {
       btn.disabled = false; btn.textContent = label;
     }
+  });
+
+  // ---- Upload a filled-in score-sheet PDF ----
+  // The PDF is read here in the browser (never sent anywhere as a file). The
+  // judge sees exactly what will change and confirms before anything is
+  // saved; saving uses the judge's own session, so RLS still limits it to
+  // their assigned applications and their own draft scores.
+  var DIM_COLS = ['dim_community', 'dim_feasibility', 'dim_innovation', 'dim_sustainability', 'dim_founder_team'];
+  var DIM_KEYS = ['community', 'feasibility', 'innovation', 'sustainability', 'founder_team'];
+  var DIM_SHORT = ['Community', 'Feasibility', 'Innovation', 'Sustainability', 'Founder & team'];
+  var uploadPlan = null;   // rows from the last reviewed PDF
+  var $review = document.getElementById('upload-review');
+  var $uploadMsg = document.getElementById('upload-msg');
+  var $uploadInput = document.getElementById('pdf-upload-input');
+  function setUploadMsg(t, cls) { $uploadMsg.textContent = t || ''; $uploadMsg.className = 'upload-review__msg' + (cls ? ' ' + cls : ''); }
+
+  async function fetchScoresFull() {
+    var res = await sbFetch('/rest/v1/scores?judge_id=eq.' + encodeURIComponent(state.session.user_id) +
+      '&select=id,application_id,dim_community,dim_innovation,dim_feasibility,dim_sustainability,dim_founder_team,total,comments,status');
+    if (!res.ok) throw new Error('Could not load your current scores.');
+    return await res.json();
+  }
+
+  // Work out, per application in the PDF, what would be saved. Blank boxes in
+  // the PDF never erase a score or note already in the portal.
+  function planUpload(sheets, existing) {
+    var apps = {}, byApp = {};
+    state.applications.forEach(function (a) { apps[a.id] = a; });
+    existing.forEach(function (s) { byApp[s.application_id] = s; });
+    return sheets.map(function (sh) {
+      var app = apps[sh.appId], cur = byApp[sh.appId] || null;
+      var row = { sheet: sh, app: app, cur: cur, skip: null, changes: {}, merged: {}, comments: null, nNotes: Object.keys(sh.comments).length };
+      DIM_COLS.forEach(function (c) {
+        var v = sh.dims[c];
+        row.merged[c] = v != null ? v : (cur ? cur[c] : null);
+        if (v != null && (!cur || cur[c] !== v)) row.changes[c] = v;
+      });
+      var mergedComments = Object.assign({}, (cur && cur.comments) || {});
+      var notesChanged = false;
+      Object.keys(sh.comments).forEach(function (k) {
+        if (mergedComments[k] !== sh.comments[k]) { mergedComments[k] = sh.comments[k]; notesChanged = true; }
+      });
+      if (notesChanged) row.comments = mergedComments;
+      row.complete = DIM_COLS.every(function (c) { return row.merged[c] != null; });
+      if (!app) row.skip = 'Not one of your assigned applications';
+      else if (cur && cur.status === 'submitted') row.skip = 'Already submitted as final in the portal (locked)';
+      else if (cur && cur.status === 'recused') row.skip = 'You recused yourself from this application';
+      else if (!Object.keys(sh.dims).length && !row.nNotes) row.skip = 'Nothing filled in on this sheet';
+      else if (!Object.keys(row.changes).length && !row.comments) row.same = true;
+      return row;
+    });
+  }
+
+  function renderUploadReview(fileName) {
+    var plan = uploadPlan;
+    var toSave = plan.filter(function (r) { return !r.skip; });
+    document.getElementById('upload-review-h').textContent = 'Review before saving';
+    document.getElementById('upload-review-sub').textContent =
+      fileName + ': ' + plan.length + ' score sheet' + (plan.length === 1 ? '' : 's') + ' found, ' +
+      toSave.length + ' can be saved. Nothing is saved until you choose Save to portal. ' +
+      'Boxes left blank in the PDF do not erase anything already in the portal.';
+    var head = '<thead><tr><th class="ut-app" scope="col">Application</th>' +
+      DIM_SHORT.map(function (n) { return '<th scope="col">' + escHtml(n) + '</th>'; }).join('') +
+      '<th scope="col">Total</th><th scope="col" style="text-align:left">What will happen</th></tr></thead>';
+    var body = plan.map(function (r) {
+      // Skipped rows show what is in the portal now, not the PDF's values.
+      var shown = r.skip ? (r.cur || {}) : r.merged;
+      var cells = DIM_COLS.map(function (c) {
+        var v = shown[c];
+        if (v == null) return '<td>—</td>';
+        return '<td' + (r.changes[c] != null && !r.skip ? ' class="ut-new"' : '') + '>' + v + '</td>';
+      }).join('');
+      var total = '—';
+      if (DIM_COLS.every(function (c) { return shown[c] != null; })) {
+        var w = [25, 20, 20, 20, 15], sum = 0;
+        DIM_COLS.forEach(function (c, i) { sum += shown[c] * w[i]; });
+        total = String(sum / 10);
+      }
+      var what;
+      if (r.skip) what = 'Skipped: ' + escHtml(r.skip);
+      else if (r.same) what = 'No change (matches the portal)';
+      else {
+        var bits = [];
+        var n = Object.keys(r.changes).length;
+        if (n) bits.push(n + ' score' + (n === 1 ? '' : 's'));
+        if (r.comments) bits.push('notes');
+        what = (r.cur ? 'Update ' : 'Save ') + bits.join(' and ') + (r.complete ? '' : ' (still incomplete)');
+      }
+      var warn = r.sheet.problems.map(function (p) { return '<span class="ut-warn">Ignored — ' + escHtml(p) + '</span>'; }).join('');
+      var title = r.app ? r.app.proj_title || 'Untitled application' : 'Unknown application';
+      return '<tr' + (r.skip ? ' class="is-skip"' : '') + '><td class="ut-app"><strong>' + escHtml(title) + '</strong>' +
+        (r.nNotes ? '<span class="ut-notes">' + r.nNotes + ' note' + (r.nNotes === 1 ? '' : 's') + ' in the PDF</span>' : '') +
+        '</td>' + cells + '<td>' + total + '</td><td class="ut-what">' + what + warn + '</td></tr>';
+    }).join('');
+    document.getElementById('upload-table').innerHTML = head + '<tbody>' + body + '</tbody>';
+    var actionable = toSave.filter(function (r) { return !r.same || r.complete; }).length;
+    document.getElementById('upload-save').disabled = actionable === 0;
+    document.getElementById('upload-submit-wrap').hidden = !toSave.some(function (r) { return r.complete; });
+    document.getElementById('upload-submit-final').checked = false;
+    setUploadMsg(actionable === 0 ? 'Nothing to save from this PDF.' : '');
+    $review.hidden = false;
+    $review.scrollIntoView({ block: 'nearest' });
+  }
+
+  document.getElementById('btn-pdf-upload').addEventListener('click', function () {
+    this.classList.remove('is-highlight');
+    $uploadInput.value = '';
+    $uploadInput.click();
+  });
+  $uploadInput.addEventListener('change', async function () {
+    var file = $uploadInput.files && $uploadInput.files[0];
+    if (!file) return;
+    var note = document.getElementById('pdf-all-note');
+    note.textContent = 'Reading ' + file.name + '…'; note.className = 'queue-tools__note';
+    $review.hidden = true; uploadPlan = null;
+    try {
+      if (file.size > 40 * 1024 * 1024) throw new Error('That file is too large to be a score sheet.');
+      var bytes = new Uint8Array(await file.arrayBuffer());
+      var results = await Promise.all([window.CFCJudgePdf.readScores(bytes), fetchScoresFull()]);
+      uploadPlan = planUpload(results[0], results[1]);
+      note.textContent = PDF_NOTE;
+      renderUploadReview(file.name);
+    } catch (err) {
+      console.error('Upload read error:', err);
+      note.textContent = err.message || 'Could not read that PDF.';
+      note.className = 'queue-tools__note is-err';
+    }
+  });
+  document.getElementById('upload-cancel').addEventListener('click', function () {
+    uploadPlan = null; $review.hidden = true;
+  });
+  document.getElementById('upload-save').addEventListener('click', async function () {
+    if (!uploadPlan) return;
+    var btn = this;
+    var submitFinal = document.getElementById('upload-submit-final').checked;
+    var rows = uploadPlan.filter(function (r) { return !r.skip && (!r.same || (submitFinal && r.complete)); });
+    if (!rows.length) { setUploadMsg('Nothing to save. Tick "submit as final" or upload a different PDF.', 'is-err'); return; }
+    var nFinal = submitFinal ? rows.filter(function (r) { return r.complete; }).length : 0;
+    if (nFinal && !window.confirm('Submit ' + nFinal + ' application' + (nFinal === 1 ? '' : 's') +
+      ' as final?\n\nFinal scores are locked and visible to the admin. You will not be able to edit them without admin override.')) return;
+    btn.disabled = true;
+    setUploadMsg('Saving…');
+    var saved = 0, finals = 0, failed = [];
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var body = Object.assign({}, r.changes);
+      if (r.comments) body.comments = r.comments;
+      var makeFinal = submitFinal && r.complete;
+      if (makeFinal) { body.status = 'submitted'; body.submitted_at = new Date().toISOString(); }
+      try {
+        var res;
+        if (r.cur && r.cur.id) {
+          res = await sbFetch('/rest/v1/scores?id=eq.' + encodeURIComponent(r.cur.id), {
+            method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(body),
+          });
+        } else {
+          res = await sbFetch('/rest/v1/scores', {
+            method: 'POST', headers: { Prefer: 'return=representation' },
+            body: JSON.stringify(Object.assign({ judge_id: state.session.user_id, application_id: r.sheet.appId }, body)),
+          });
+        }
+        var out = res.ok ? await res.json() : [];
+        if (!res.ok || !out.length) throw new Error('HTTP ' + res.status);
+        saved++; if (makeFinal) finals++;
+      } catch (err) {
+        console.error('Upload save error:', err);
+        failed.push(r.app ? r.app.proj_title || 'Untitled application' : r.sheet.appId);
+      }
+    }
+    try { state.scores = await fetchOwnScores(); renderQueue(); } catch (_) {}
+    btn.disabled = false;
+    if (failed.length) {
+      setUploadMsg('Saved ' + saved + ', but ' + failed.length + ' could not be saved: ' + failed.join('; ') + '. Try again, or enter those in the portal.', 'is-err');
+      return;
+    }
+    uploadPlan = null;
+    document.getElementById('upload-table').innerHTML = '';
+    document.getElementById('upload-save').disabled = true;
+    document.getElementById('upload-submit-wrap').hidden = true;
+    document.getElementById('upload-review-h').textContent = 'Saved';
+    document.getElementById('upload-review-sub').textContent = '';
+    setUploadMsg('Saved ' + saved + ' application' + (saved === 1 ? '' : 's') + ' to the portal' +
+      (finals ? ', ' + finals + ' submitted as final.' : ' as drafts. Open each one to review and submit it as final.'), 'is-ok');
   });
 
   document.querySelectorAll('[data-queue-filter]').forEach(function (b) {

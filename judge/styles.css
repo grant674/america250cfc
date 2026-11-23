@@ -447,3 +447,34 @@
 .queue-pdf:disabled { opacity: 0.55; cursor: default; }
 .queue-tools__note { font-family: var(--font); font-size: 13px; color: var(--fg-65); }
 .queue-tools__note.is-err { color: var(--c-red); }
+
+/* Upload a filled-in score-sheet PDF: review panel */
+.queue-pdf.is-highlight { border-color: var(--c-blue); box-shadow: 0 0 0 3px rgba(27, 69, 155, 0.25); }
+.upload-review {
+  background: var(--c-white);
+  border: 1px solid var(--line-strong);
+  border-top: 3px solid var(--c-blue);
+  border-radius: var(--radius-md);
+  padding: 18px 20px 20px;
+  margin: 0 0 22px;
+  font-family: var(--font);
+}
+.upload-review__h { font-size: 17px; font-weight: 700; margin: 0 0 4px; color: var(--c-black); }
+.upload-review__sub { font-size: 13px; line-height: 1.5; color: var(--fg-65); margin: 0 0 12px; }
+.upload-review__scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.upload-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.upload-table th, .upload-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: center; vertical-align: top; }
+.upload-table thead th { background: var(--c-gray); font-size: 11px; font-weight: 700; white-space: nowrap; }
+.upload-table th.ut-app, .upload-table td.ut-app { text-align: left; min-width: 200px; }
+.upload-table td.ut-what { text-align: left; min-width: 190px; color: var(--fg-65); }
+.upload-table tr.is-skip td { color: var(--fg-45); }
+.upload-table tr.is-skip td.ut-what { color: var(--c-red); }
+.upload-table .ut-new { font-weight: 700; color: var(--c-blue); }
+.upload-table .ut-warn { display: block; color: var(--c-red); font-size: 12px; margin-top: 2px; }
+.upload-table .ut-notes { display: block; font-size: 12px; color: var(--fg-65); margin-top: 2px; }
+.upload-review__check { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; line-height: 1.45; margin: 14px 0 0; }
+.upload-review__check input { margin-top: 3px; }
+.upload-review__row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 16px; }
+.upload-review__msg { font-size: 13px; font-weight: 700; color: var(--fg-65); }
+.upload-review__msg.is-ok { color: #15803d; }
+.upload-review__msg.is-err { color: var(--c-red); }

@@ -19,7 +19,7 @@ function OptanonWrapper() { }
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="preconnect" href="https://emhcsinxtxshdgiceofa.supabase.co" />
 <link rel="stylesheet" href="/styles.css?v=15" />
-<link rel="stylesheet" href="/judge/styles.css?v=4" />
+<link rel="stylesheet" href="/judge/styles.css?v=5" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="judge-body">
@@ -121,8 +121,26 @@ function OptanonWrapper() { }
 
     <div class="queue-tools" id="queue-tools" hidden>
       <button type="button" class="queue-pdf" id="btn-pdf-all">Download all as PDF</button>
+      <button type="button" class="queue-pdf" id="btn-pdf-upload">Upload filled-in PDF</button>
+      <input type="file" id="pdf-upload-input" accept="application/pdf,.pdf" hidden />
       <span class="queue-tools__note" id="pdf-all-note">Every application assigned to you, each with a score sheet, in one file.</span>
     </div>
+
+    <!-- Review of an uploaded score-sheet PDF: nothing is saved until confirmed -->
+    <section class="upload-review" id="upload-review" aria-live="polite" hidden>
+      <h2 class="upload-review__h" id="upload-review-h">Review before saving</h2>
+      <p class="upload-review__sub" id="upload-review-sub"></p>
+      <div class="upload-review__scroll"><table class="upload-table" id="upload-table"></table></div>
+      <label class="upload-review__check" id="upload-submit-wrap">
+        <input type="checkbox" id="upload-submit-final" />
+        <span>Also <strong>submit as final</strong> every application that ends up with all five scores. Final scores are locked and cannot be edited without the admin.</span>
+      </label>
+      <div class="upload-review__row">
+        <button type="button" class="btn btn--blue" id="upload-save">Save to portal</button>
+        <button type="button" class="btn btn--ghost-blue" id="upload-cancel">Cancel</button>
+        <span class="upload-review__msg" id="upload-msg"></span>
+      </div>
+    </section>
 
     <ul class="queue-list" id="queue-list"></ul>
 
@@ -144,7 +162,7 @@ function OptanonWrapper() { }
 
 </main>
 
-<script src="/judge/pdf.js?v=2" defer></script>
-<script src="/judge/script.js?v=7" defer></script>
+<script src="/judge/pdf.js?v=3" defer></script>
+<script src="/judge/script.js?v=8" defer></script>
 </body>
 </html>
