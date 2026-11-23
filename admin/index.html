@@ -30,7 +30,7 @@ function OptanonWrapper() { }
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="/styles.css?v=15" />
-<link rel="stylesheet" href="/admin/styles.css?v=11" />
+<link rel="stylesheet" href="/admin/styles.css?v=12" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="admin-body">
@@ -83,6 +83,27 @@ function OptanonWrapper() { }
         <span class="invite-msg" id="invite-msg"></span>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- ============== REMOVE A JUDGE ============== -->
+<div class="invite-modal" id="remove-judge-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="remove-judge-title">
+  <div class="invite-modal__scrim" data-remove-close></div>
+  <div class="invite-modal__panel" role="document">
+    <button class="invite-modal__close" type="button" data-remove-close aria-label="Close">×</button>
+    <span class="rule-bar" aria-hidden="true"></span>
+    <h2 id="remove-judge-title" class="invite-modal__title">Remove judge?</h2>
+    <p class="invite-modal__sub" id="remove-judge-sub">—</p>
+    <label class="remove-judge__check" id="remove-judge-scores-wrap" hidden>
+      <input type="checkbox" id="remove-judge-delete-scores" />
+      <span id="remove-judge-scores-text"></span>
+    </label>
+    <p class="score-edit__note">You can bring a removed judge back by inviting the same email again.</p>
+    <div class="invite-form__row">
+      <button type="button" class="invite-submit remove-judge__go" id="remove-judge-go">Remove judge</button>
+      <button type="button" class="admin-judging__toggle" data-remove-close>Cancel</button>
+      <span class="invite-msg" id="remove-judge-msg"></span>
+    </div>
   </div>
 </div>
 
@@ -570,6 +591,6 @@ function OptanonWrapper() { }
   </div>
 </div>
 
-<script src="/admin/script.js?v=17" defer></script>
+<script src="/admin/script.js?v=18" defer></script>
 </body>
 </html>

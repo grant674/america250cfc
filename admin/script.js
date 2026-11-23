@@ -153,6 +153,7 @@
       var complete = j.total > 0 && j.submitted >= j.total;
       return [
         '<div class="judge-progress', complete ? ' is-complete' : '', '">',
+          '<button type="button" class="judge-progress__remove" data-remove-judge="', escHtml(j.judge_id), '" aria-label="Remove ', escHtml(j.name), '">Remove</button>',
           '<div class="judge-progress__name">', escHtml(j.name), '</div>',
           '<div class="judge-progress__email">', escHtml(j.email || ''), '</div>',
           '<div class="judge-progress__bar"><div class="judge-progress__fill" style="width:', String(pct), '%"></div></div>',
@@ -370,6 +371,83 @@
       e.preventDefault(); e.returnValue = ''; return '';
     });
   })();
+
+  // ----- Remove a judge -----
+  var removeModal = document.getElementById('remove-judge-modal');
+  var removeMsg = document.getElementById('remove-judge-msg');
+  var removeGo = document.getElementById('remove-judge-go');
+  var removeTarget = null;
+  function setRemoveMsg(t, cls) { removeMsg.textContent = t || ''; removeMsg.className = 'invite-msg' + (cls ? ' ' + cls : ''); }
+  function closeRemoveJudge() { removeModal.setAttribute('aria-hidden', 'true'); removeTarget = null; }
+  function openRemoveJudge(judgeId) {
+    var j = (state.judgesProgress || []).find(function (x) { return x.judge_id === judgeId; });
+    if (!j) return;
+    removeTarget = judgeId;
+    var counts = { submitted: 0, draft: 0, recused: 0 };
+    ((state.judging && state.judging.score_status) || []).forEach(function (t) {
+      if (t[0] === judgeId) counts[t[2]] = (counts[t[2]] || 0) + 1;
+    });
+    var nScores = counts.submitted + counts.draft + counts.recused;
+    var nAssigned = ((state.judging && state.judging.assignments) || []).filter(function (p) { return p[0] === judgeId; }).length;
+    document.getElementById('remove-judge-title').textContent = 'Remove ' + j.name + '?';
+    document.getElementById('remove-judge-sub').textContent =
+      (j.email ? j.email + '. ' : '') + 'They will lose access to the judge portal straight away, and their ' +
+      plural(nAssigned, 'assignment') + ' will be removed.';
+    var wrap = document.getElementById('remove-judge-scores-wrap');
+    var box = document.getElementById('remove-judge-delete-scores');
+    box.checked = false;
+    wrap.hidden = nScores === 0;
+    document.getElementById('remove-judge-scores-text').textContent =
+      'Also permanently delete their ' + plural(nScores, 'score') + ' (' + counts.submitted + ' final, ' + counts.draft +
+      ' draft, ' + counts.recused + ' recused). If left unticked, the scores are kept and final scores still count in the results.';
+    setRemoveMsg('');
+    removeGo.disabled = false;
+    removeModal.setAttribute('aria-hidden', 'false');
+  }
+  document.getElementById('judging-grid').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-remove-judge]');
+    if (b) openRemoveJudge(b.getAttribute('data-remove-judge'));
+  });
+  document.querySelectorAll('[data-remove-close]').forEach(function (el) { el.addEventListener('click', closeRemoveJudge); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && removeModal.getAttribute('aria-hidden') === 'false') closeRemoveJudge();
+  });
+  removeGo.addEventListener('click', async function () {
+    if (!removeTarget) return;
+    var deleteScores = document.getElementById('remove-judge-delete-scores').checked;
+    if (deleteScores && !window.confirm('Permanently delete this judge\'s scores? This cannot be undone.')) return;
+    if (assignDraft && !window.confirm('You have unsaved assignment changes. Unsaved ticks for this judge will be dropped. Continue?')) return;
+    removeGo.disabled = true;
+    setRemoveMsg('Removing…');
+    try {
+      var res = await fetch('/.netlify/functions/admin-remove-judge', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ judge_id: removeTarget, delete_scores: deleteScores }),
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok && !data.removed) throw new Error(data.error === 'judge_not_found' ? 'That judge no longer exists.' : 'Could not remove the judge (' + (data.error || 'HTTP ' + res.status) + ').');
+      // Drop them from the local view straight away, then refresh.
+      var gone = removeTarget;
+      state.judgesProgress = (state.judgesProgress || []).filter(function (x) { return x.judge_id !== gone; });
+      if (state.judging) {
+        state.judging.judges = (state.judging.judges || []).filter(function (x) { return x.id !== gone; });
+        state.judging.assignments = (state.judging.assignments || []).filter(function (p) { return p[0] !== gone; });
+      }
+      renderJudgesProgress(state.judgesProgress);
+      renderAssignments(true);
+      if (data.removed && !res.ok) {
+        setRemoveMsg('Access removed, but some clean-up did not finish. Refresh and check the Assignments grid.', 'is-err');
+        removeGo.disabled = true;
+      } else {
+        setRemoveMsg('Removed.', 'is-ok');
+        setTimeout(closeRemoveJudge, 700);
+      }
+      fetchData();
+    } catch (err) {
+      setRemoveMsg(err.message || 'Could not remove the judge.', 'is-err');
+      removeGo.disabled = false;
+    }
+  });
 
   // ----- Admin score editor: enter / edit scores on a judge's behalf -----
   // Same five criteria and weights as the judge portal and the database.
