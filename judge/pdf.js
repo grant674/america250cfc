@@ -40,6 +40,9 @@
   ];
 
   var LIB_URL = '/judge/vendor/pdf-lib.min.js?v=1.17.1';
+  var UPLOAD_URL = 'https://america250cfc.org/judge/#upload';
+  // a_<application uuid>_<criterion>_<score|notes>
+  var FIELD_RE = /^a_([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_(community|feasibility|innovation|sustainability|founder_team)_(score|notes)$/;
   var libPromise = null;
   function loadLib() {
     if (window.PDFLib) return Promise.resolve(window.PDFLib);
@@ -296,8 +299,23 @@
       // ----- Score sheet (always starts a fresh page, fits on one) -----
       newPage();
       var sc = (scoresByApp && scoresByApp[a.id]) || null;
-      text('Score sheet', { size: 18, font: bold, lead: 23 });
-      text(a.proj_title || 'Untitled application', { size: 11, font: bold, color: BLUE });
+// "Upload" button, top right: a link to the portal's upload step. A PDF
+      // cannot safely send scores itself (it would have to carry the judge's
+      // sign-in), so the button opens the portal, where the signed-in judge
+      // picks this saved file and reviews what will be saved.
+      var upW = 176, upH = 24, upX = PAGE_W - M - upW, upY = y - 26;
+      page.drawRectangle({ x: upX, y: upY, width: upW, height: upH, color: BLUE });
+      var upLabel = 'UPLOAD SCORES TO THE PORTAL';
+      page.drawText(upLabel, { x: upX + (upW - bold.widthOfTextAtSize(upLabel, 8.5)) / 2, y: upY + 8, size: 8.5, font: bold, color: rgb(1, 1, 1) });
+      var upNote = 'Save this PDF first, then choose it there.';
+      page.drawText(upNote, { x: PAGE_W - M - font.widthOfTextAtSize(upNote, 7.5), y: upY - 10, size: 7.5, font: font, color: MUTED });
+      page.node.addAnnot(doc.context.register(doc.context.obj({
+        Type: 'Annot', Subtype: 'Link', Rect: [upX, upY, upX + upW, upY + upH], Border: [0, 0, 0],
+        A: { Type: 'Action', S: 'URI', URI: L.PDFString.of(UPLOAD_URL) },
+      })));
+
+      text('Score sheet', { size: 18, font: bold, lead: 23, maxW: CONTENT_W - upW - 16 });
+      text(a.proj_title || 'Untitled application', { size: 11, font: bold, color: BLUE, maxW: CONTENT_W - upW - 16 });
       gap(4);
       text('Score each criterion from 0 (lowest) to 10 (highest), whole numbers. Type into the boxes and the total adds up for you, or print and write by hand.',
         { size: 9.5, color: MUTED });
@@ -305,7 +323,10 @@
       if (sc && sc.status === 'recused') text('You recused yourself from this application in the portal.', { size: 9.5, font: bold });
       gap(8);
 
-      var SCORE_W = 62, NOTES_H = 34, prefix = 'app' + (appIndex + 1) + '_';
+      // Field names carry the application id, so a filled-in sheet can be
+      // uploaded back to the portal and matched to the right application
+      // (see readScores below). Keep the pattern in step with FIELD_RE.
+      var SCORE_W = 62, NOTES_H = 30, prefix = 'a_' + String(a.id).toLowerCase() + '_';
       function field(name, x, yy, w, h, value, multiline) {
         var f = form.createTextField(prefix + name);
         if (multiline) f.enableMultiline();
@@ -362,7 +383,7 @@
       calcOrder.push(tf.acroField.ref);
       y = totTop - 44 - 8;
 
-      text('Working copy: scores count only once entered and submitted in the judge portal, america250cfc.org/judge/',
+      text('Working copy: scores count only once they are in the judge portal. Save this PDF, then upload it at america250cfc.org/judge/',
         { size: 9, font: bold });
       text('The total fills in automatically in Adobe Reader, Chrome and Edge; elsewhere, or on paper, use the formula above. To recuse yourself, use the Recuse button in the portal.',
         { size: 8.5, color: MUTED });
@@ -385,6 +406,39 @@
     return await doc.save();
   }
 
+  // ---- Read a filled-in score sheet back ----
+  // Returns one entry per application found in the PDF's form fields:
+  //   { appId, dims: { dim_community: 8, ... }, comments: { community: '...' }, problems: ['...'] }
+  // Only boxes the judge actually filled appear in dims / comments. A score
+  // that isn't a whole number from 0 to 10 is reported in `problems` and left
+  // out. Throws if the file isn't a PDF or has no score-sheet fields (e.g. a
+  // scan or a "print to PDF" copy, which loses the fillable boxes).
+  async function readScores(bytes) {
+    var L = await loadLib();
+    var doc;
+    try { doc = await L.PDFDocument.load(bytes, { ignoreEncryption: true }); }
+    catch (_) { throw new Error('That file could not be read as a PDF.'); }
+    var fields;
+    try { fields = doc.getForm().getFields(); } catch (_) { fields = []; }
+    var byApp = {}, order = [];
+    fields.forEach(function (f) {
+      var m = FIELD_RE.exec(f.getName());
+      if (!m || typeof f.getText !== 'function') return;
+      var appId = m[1], key = m[2], kind = m[3];
+      if (!byApp[appId]) { byApp[appId] = { appId: appId, dims: {}, comments: {}, problems: [] }; order.push(appId); }
+      var raw;
+      try { raw = f.getText(); } catch (_) { raw = ''; }
+      raw = String(raw == null ? '' : raw).trim();
+      if (!raw) return;
+      var dim = DIMS.filter(function (d) { return d.key === key; })[0];
+      if (kind === 'notes') { byApp[appId].comments[key] = raw.slice(0, 1000); return; }
+      if (/^\d{1,2}(\.0+)?$/.test(raw) && Number(raw) >= 0 && Number(raw) <= 10) byApp[appId].dims[dim.col] = Number(raw);
+      else byApp[appId].problems.push(dim.name + ': "' + raw.slice(0, 20) + '" is not a whole number from 0 to 10');
+    });
+    if (!order.length) throw new Error('No fillable score boxes were found in that PDF. Upload the PDF you downloaded from this portal and filled in (not a scan or a printed copy).');
+    return order.map(function (id) { return byApp[id]; });
+  }
+
   function saveFile(bytes, filename) {
     var blob = new Blob([bytes], { type: 'application/pdf' });
     var url = URL.createObjectURL(blob);
@@ -400,7 +454,9 @@
   // Public API. Both resolve once the download has been handed to the browser.
   window.CFCJudgePdf = {
     FIELDS: FIELDS,
+    DIMS: DIMS,
     build: build,
+    readScores: readScores,
     downloadOne: async function (app, score, judgeName) {
       var by = {};
       if (score) by[app.id] = score;
