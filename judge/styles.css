@@ -478,3 +478,32 @@
 .upload-review__msg { font-size: 13px; font-weight: 700; color: var(--fg-65); }
 .upload-review__msg.is-ok { color: #15803d; }
 .upload-review__msg.is-err { color: var(--c-red); }
+
+/* Sign-in: second way in (email link) under the password form */
+.judge-alt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin-top: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--fg-65);
+}
+.judge-form .judge-alt__btn {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-blue);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.judge-form .judge-alt__btn:disabled { opacity: 0.6; cursor: default; }
+.judge-err.is-ok { color: #15803d; }
+#judge-password .btn--ghost-blue { margin-top: 18px; }

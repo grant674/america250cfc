@@ -24,8 +24,10 @@
   var $errorPan = document.getElementById('judge-error');
   var $who      = document.getElementById('judge-who');
   var $signoutBtn = document.getElementById('btn-signout');
+  var $pwBtn    = document.getElementById('btn-password');
+  var $password = document.getElementById('judge-password');
 
-  var screens = { loading: $loading, signin: $signin, sent: $sent, denied: $denied, queue: $queue, error: $errorPan };
+  var screens = { loading: $loading, signin: $signin, sent: $sent, denied: $denied, queue: $queue, error: $errorPan, password: $password };
   function show(name) {
     Object.keys(screens).forEach(function (k) { screens[k].hidden = (k !== name); });
   }
@@ -46,25 +48,20 @@
   };
 
   // ---- Session storage ----
-  function loadSession() {
-    try {
-      var raw = localStorage.getItem(LS_SESSION);
-      if (!raw) return null;
-      var sess = JSON.parse(raw);
-      if (!sess || !sess.access_token) return null;
-      // Tokens expire after ~1h. If expired, drop.
-      if (sess.expires_at && Date.now() / 1000 > sess.expires_at + 30) return null;
-      return sess;
-    } catch (_) { return null; }
-  }
-  function saveSession(sess) {
-    if (sess) localStorage.setItem(LS_SESSION, JSON.stringify(sess));
-    else localStorage.removeItem(LS_SESSION);
-  }
+  // Shared with the scoring page (judge/session.js). freshSession() renews
+  // the hourly access token with the refresh token, so a judge stays signed in.
+  var Sess = window.CFCJudgeSession;
+  function saveSession(sess) { Sess.write(sess); }
+  function freshSession() { return Sess.fresh({ url: SUPABASE_URL, key: SUPABASE_ANON_KEY }); }
 
   // ---- Supabase REST helpers ----
-  function sbFetch(path, opts) {
+  async function sbFetch(path, opts) {
     opts = opts || {};
+    // Renew the sign-in first if it is about to expire.
+    if (state.session) {
+      var renewed = await freshSession();
+      if (renewed) state.session = renewed;
+    }
     var url = SUPABASE_URL + path;
     var headers = Object.assign({
       apikey: SUPABASE_ANON_KEY,
@@ -116,6 +113,34 @@
     return 'That sign-in link has expired or was already used. Each link works once. Enter your email to get a new one.';
   }
 
+  // Email + password sign-in (no email round trip). Returns a session, or
+  // throws an Error whose .code is 'bad_credentials' | 'rate_limited' | 'failed'.
+  async function signInWithPassword(email, password) {
+    var res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: password }),
+    });
+    if (!res.ok) {
+      var e = new Error('sign-in failed');
+      e.code = res.status === 429 ? 'rate_limited' : (res.status === 400 || res.status === 401 || res.status === 422) ? 'bad_credentials' : 'failed';
+      throw e;
+    }
+    return Sess.fromTokenResponse(await res.json(), null);
+  }
+
+  // Set / change the signed-in judge's own password.
+  async function updateOwnPassword(password) {
+    var res = await sbFetch('/auth/v1/user', { method: 'PUT', body: JSON.stringify({ password: password }) });
+    if (!res.ok) {
+      var detail = await res.json().catch(function () { return {}; });
+      var e = new Error(detail.msg || detail.message || 'Could not save the password.');
+      e.code = detail.error_code || detail.code || '';
+      throw e;
+    }
+    return true;
+  }
+
   function parseHashFragment() {
     // Magic-link callback: URL becomes /judge/#access_token=...&refresh_token=...&expires_in=3600&token_type=bearer
     if (!window.location.hash || window.location.hash.length < 2) return null;
@@ -163,6 +188,7 @@
     state.scores = [];
     $who.hidden = true;
     $signoutBtn.hidden = true;
+    $pwBtn.hidden = true;
     show('signin');
   }
 
@@ -344,6 +370,7 @@
     $who.textContent = state.judge.name;
     $who.hidden = false;
     $signoutBtn.hidden = false;
+    $pwBtn.hidden = false;
 
     var results = await Promise.all([fetchApplications(), fetchOwnScores()]);
     state.applications = results[0] || [];
@@ -372,7 +399,7 @@
       // 0) Came back from a dead emailed link? If a session from an earlier
       // click is still valid just carry on; otherwise explain and offer a new link.
       var linkError = parseHashError();
-      if (linkError && !loadSession()) {
+      if (linkError && !(await freshSession())) {
         var le = document.getElementById('signin-err');
         le.textContent = linkError;
         le.hidden = false;
@@ -396,8 +423,8 @@
         // Clean the hash from the URL so a refresh doesn't re-process.
         history.replaceState(null, '', window.location.pathname);
       } else {
-        // 2) Existing session?
-        state.session = loadSession();
+        // 2) Existing session? (renewed here if the hour is nearly up)
+        state.session = await freshSession();
         if (!state.session) {
           show('signin');
           return;
@@ -426,14 +453,56 @@
   }
 
   // ---- Event wiring ----
+  // Sign in with email + password (the form's main action).
   document.getElementById('judge-signin-form').addEventListener('submit', async function (e) {
     e.preventDefault();
     var email = document.getElementById('signin-email').value.trim().toLowerCase();
+    var password = document.getElementById('signin-password').value;
     var err = document.getElementById('signin-err');
     var btn = document.getElementById('signin-submit');
     err.hidden = true;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       err.textContent = 'Please enter a valid email address.';
+      err.hidden = false;
+      return;
+    }
+    if (!password) {
+      err.textContent = 'Enter your password, or choose "Email me a sign-in link" below.';
+      err.hidden = false;
+      return;
+    }
+    btn.disabled = true;
+    var prev = btn.innerHTML;
+    btn.innerHTML = 'Signing in…';
+    try {
+      state.session = await signInWithPassword(email, password);
+      saveSession(state.session);
+      document.getElementById('signin-password').value = '';
+      await loadAuthedQueue();
+    } catch (e2) {
+      state.session = null;
+      err.textContent = e2.code === 'bad_credentials'
+        ? 'That email and password do not match. Check them, or use "Email me a sign-in link" below.'
+        : e2.code === 'rate_limited'
+          ? 'Too many attempts. Please wait a minute and try again.'
+          : 'Could not sign you in. Please try again or write apply@america250cfc.org.';
+      err.hidden = false;
+      show('signin');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = prev;
+    }
+  });
+
+  // Second way in: one-click sign-in link by email (also the "forgot my
+  // password" route). Uses the email typed in the same form.
+  document.getElementById('signin-link').addEventListener('click', async function () {
+    var email = document.getElementById('signin-email').value.trim().toLowerCase();
+    var err = document.getElementById('signin-err');
+    var btn = this;
+    err.hidden = true;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      err.textContent = 'Enter your email address above first, then choose "Email me a sign-in link".';
       err.hidden = false;
       return;
     }
@@ -459,6 +528,40 @@
     show('signin');
   });
   document.getElementById('btn-denied-signout').addEventListener('click', signOut);
+
+  // ---- Set / change password (signed-in judge) ----
+  var PW_MIN = 10;
+  $pwBtn.addEventListener('click', function () {
+    document.getElementById('password-form').reset();
+    var m = document.getElementById('password-msg');
+    m.hidden = true; m.className = 'judge-err';
+    show('password');
+    document.getElementById('password-new').focus();
+  });
+  document.getElementById('btn-password-back').addEventListener('click', function () { show('queue'); });
+  document.getElementById('password-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var a = document.getElementById('password-new').value;
+    var b = document.getElementById('password-again').value;
+    var m = document.getElementById('password-msg');
+    var btn = document.getElementById('password-submit');
+    function say(text, ok) { m.textContent = text; m.className = 'judge-err' + (ok ? ' is-ok' : ''); m.hidden = false; }
+    if (a.length < PW_MIN) return say('Use at least ' + PW_MIN + ' characters.');
+    if (a !== b) return say('The two passwords do not match.');
+    btn.disabled = true;
+    try {
+      await updateOwnPassword(a);
+      document.getElementById('password-form').reset();
+      say('Password saved. Use it with your email next time you sign in.', true);
+    } catch (err) {
+      say(/same_password/.test(err.code) ? 'That is already your password.'
+        : /weak_password/.test(err.code) ? 'That password is too weak. Try a longer one.'
+        : /reauth/.test(err.code) ? 'For security, sign out, sign in again, then change your password straight away.'
+        : 'Could not save the password. Please try again.');
+    } finally {
+      btn.disabled = false;
+    }
+  });
   document.getElementById('btn-signout').addEventListener('click', signOut);
   document.getElementById('btn-retry').addEventListener('click', function () {
     bootstrap();

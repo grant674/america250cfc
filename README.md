@@ -21,7 +21,8 @@ an edge auth gate, backed by Supabase, Resend, and Anthropic.
 - Public form (`/apply/`) → **Cloudflare Turnstile** verified by `submit-application`
   → inserted via service role → an `AFTER INSERT` trigger runs AI screening
   (`screen-application` → Claude) → confirmation email via Resend.
-- Judges sign in via magic link (`/judge/`), score blind (applicant identity is
+- Judges sign in at `/judge/` with email + password (set or reset by the admin,
+  changeable by the judge) or an emailed magic link, score blind (applicant identity is
   withheld at the DB level), data gated by Supabase RLS. A judge sees only the
   applications assigned to them.
 - Judging workflow (admin): tick the 25 finalists in the applications table →

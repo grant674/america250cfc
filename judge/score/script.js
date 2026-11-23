@@ -71,23 +71,23 @@
   };
 
   // ---- Session ----
-  function loadSession() {
-    try {
-      var raw = localStorage.getItem(LS_SESSION);
-      if (!raw) return null;
-      var s = JSON.parse(raw);
-      if (!s || !s.access_token) return null;
-      if (s.expires_at && Date.now() / 1000 > s.expires_at + 30) return null;
-      return s;
-    } catch (_) { return null; }
-  }
-  function saveSessionToLs(s) {
-    if (s) localStorage.setItem(LS_SESSION, JSON.stringify(s));
-    else localStorage.removeItem(LS_SESSION);
-  }
+  // Shared with the queue page (judge/session.js). freshSession() renews the
+  // hourly access token with the refresh token, so a long scoring session is
+  // not cut off (and auto-saves keep working) after an hour.
+  var Sess = window.CFCJudgeSession;
+  function saveSessionToLs(s) { Sess.write(s); }
+  function freshSession() { return Sess.fresh({ url: SUPABASE_URL, key: SUPABASE_ANON_KEY }); }
 
-  function sbFetch(path, opts) {
+  async function sbFetch(path, opts) {
     opts = opts || {};
+    var renewed = await freshSession();
+    if (renewed) state.session = renewed;
+    else if (state.session) {
+      // The sign-in can no longer be renewed: say so rather than failing saves silently.
+      state.session = null;
+      show('noauth');
+      throw new Error('Your session has expired. Please sign in again.');
+    }
     var headers = Object.assign({
       apikey: SUPABASE_ANON_KEY,
       'Content-Type': 'application/json',
@@ -707,14 +707,13 @@
       show('error');
       return;
     }
-    state.session = loadSession();
-    if (!state.session || !state.session.user_id) {
-      show('noauth');
-      return;
-    }
-
     try {
       await loadConfig();
+      state.session = await freshSession();
+      if (!state.session || !state.session.user_id) {
+        show('noauth');
+        return;
+      }
 
       var results = await Promise.all([fetchApp(), fetchScore()]);
       state.app = results[0];

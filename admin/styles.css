@@ -405,9 +405,9 @@ button.assign-score--submitted:hover, button.assign-score--draft:hover, button.a
   background: var(--c-blue);
 }
 .judge-progress.is-complete::before { background: var(--c-ok); }
+.judge-progress__actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; }
+.judge-password__input { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace !important; letter-spacing: 0.04em; }
 .judge-progress__remove {
-  position: absolute;
-  top: 12px; right: 12px;
   font-family: var(--font);
   font-size: 11px;
   font-weight: 700;
@@ -419,7 +419,7 @@ button.assign-score--submitted:hover, button.assign-score--draft:hover, button.a
   text-decoration: underline;
 }
 .judge-progress__remove:hover { color: var(--c-red); }
-.judge-progress__name { padding-right: 64px; }
+.judge-progress__name { padding-right: 128px; }
 .remove-judge__check { display: flex; gap: 8px; align-items: flex-start; font-family: var(--font); font-size: 13px; line-height: 1.45; margin: 0 0 12px; }
 .remove-judge__check input { margin-top: 3px; }
 .invite-submit.remove-judge__go { background: var(--c-red); }

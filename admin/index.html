@@ -30,7 +30,7 @@ function OptanonWrapper() { }
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="/styles.css?v=15" />
-<link rel="stylesheet" href="/admin/styles.css?v=12" />
+<link rel="stylesheet" href="/admin/styles.css?v=13" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="admin-body">
@@ -82,6 +82,31 @@ function OptanonWrapper() { }
         <button type="submit" class="invite-submit" id="invite-submit">Send invite</button>
         <span class="invite-msg" id="invite-msg"></span>
       </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============== SET / RESET A JUDGE'S PASSWORD ============== -->
+<div class="invite-modal" id="judge-password-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="judge-password-title">
+  <div class="invite-modal__scrim" data-pw-close></div>
+  <div class="invite-modal__panel" role="document">
+    <button class="invite-modal__close" type="button" data-pw-close aria-label="Close">×</button>
+    <span class="rule-bar" aria-hidden="true"></span>
+    <h2 id="judge-password-title" class="invite-modal__title">Judge password</h2>
+    <p class="invite-modal__sub" id="judge-password-sub">—</p>
+    <form id="judge-password-form" class="invite-form" novalidate autocomplete="off">
+      <label class="invite-label">
+        New password <span class="invite-label__hint">(at least 10 characters)</span>
+        <input type="text" id="judge-password-input" class="judge-password__input" maxlength="72" autocomplete="off"
+          autocapitalize="none" autocorrect="off" spellcheck="false" data-1p-ignore data-lpignore="true" />
+      </label>
+      <div class="invite-form__row">
+        <button type="submit" class="invite-submit" id="judge-password-save">Set password</button>
+        <button type="button" class="admin-judging__toggle" id="judge-password-generate">Generate another</button>
+        <button type="button" class="admin-judging__toggle" id="judge-password-copy">Copy</button>
+      </div>
+      <span class="invite-msg" id="judge-password-msg" aria-live="polite"></span>
+      <p class="score-edit__note">The judge can change it after signing in, under Password. If they forget it, set a new one here.</p>
     </form>
   </div>
 </div>
@@ -591,6 +616,6 @@ function OptanonWrapper() { }
   </div>
 </div>
 
-<script src="/admin/script.js?v=18" defer></script>
+<script src="/admin/script.js?v=19" defer></script>
 </body>
 </html>

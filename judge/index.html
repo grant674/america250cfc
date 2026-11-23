@@ -19,7 +19,7 @@ function OptanonWrapper() { }
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="preconnect" href="https://emhcsinxtxshdgiceofa.supabase.co" />
 <link rel="stylesheet" href="/styles.css?v=15" />
-<link rel="stylesheet" href="/judge/styles.css?v=5" />
+<link rel="stylesheet" href="/judge/styles.css?v=6" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="judge-body">
@@ -32,6 +32,7 @@ function OptanonWrapper() { }
     </a>
     <div class="judge-bar__meta">
       <span class="judge-bar__who" id="judge-who" hidden></span>
+      <button class="judge-bar__signout" id="btn-password" type="button" hidden>Password</button>
       <button class="judge-bar__signout" id="btn-signout" type="button" hidden>Sign out</button>
     </div>
   </div>
@@ -51,17 +52,23 @@ function OptanonWrapper() { }
       <span class="rule-bar" aria-hidden="true"></span>
       <h1 class="judge-h1">Sign in to score.</h1>
       <p class="judge-lede">
-        Enter the email address associated with your invitation. We'll send a one-click sign-in link.
+        Sign in with the email address from your invitation and your password.
       </p>
       <form id="judge-signin-form" class="judge-form" novalidate>
         <label for="signin-email" class="judge-label">Email</label>
-        <input id="signin-email" type="email" name="email" required autocomplete="email"
+        <input id="signin-email" type="email" name="email" required autocomplete="username"
           placeholder="you@organization.org"
           autocapitalize="none" autocorrect="off" spellcheck="false" />
+        <label for="signin-password" class="judge-label">Password</label>
+        <input id="signin-password" type="password" name="password" autocomplete="current-password" />
         <button type="submit" class="btn btn--blue btn--lg" id="signin-submit">
-          Send magic link <span class="arr" aria-hidden="true">→</span>
+          Sign in <span class="arr" aria-hidden="true">→</span>
         </button>
         <p class="judge-err" id="signin-err" hidden></p>
+        <div class="judge-alt">
+          <span>No password yet, or forgotten it?</span>
+          <button type="button" class="judge-alt__btn" id="signin-link">Email me a sign-in link</button>
+        </div>
       </form>
       <p class="judge-foot">
         Trouble signing in? Reach <a href="mailto:apply@america250cfc.org">apply@america250cfc.org</a>.
@@ -78,6 +85,26 @@ function OptanonWrapper() { }
         If <strong id="sent-email">your email</strong> is on the judge list, a sign-in link is on its way. It expires in one hour.
       </p>
       <button type="button" class="btn btn--ghost-blue" id="btn-back-signin">Back</button>
+    </div>
+  </section>
+
+  <!-- ============== SET / CHANGE PASSWORD ============== -->
+  <section class="judge-signin" id="judge-password" hidden>
+    <div class="judge-card">
+      <span class="rule-bar" aria-hidden="true"></span>
+      <h1 class="judge-h1">Your password.</h1>
+      <p class="judge-lede">
+        Choose a password to sign in with your email next time, without waiting for an email link. At least 10 characters.
+      </p>
+      <form id="password-form" class="judge-form" novalidate>
+        <label for="password-new" class="judge-label">New password</label>
+        <input id="password-new" type="password" autocomplete="new-password" minlength="10" required />
+        <label for="password-again" class="judge-label">Type it again</label>
+        <input id="password-again" type="password" autocomplete="new-password" minlength="10" required />
+        <button type="submit" class="btn btn--blue btn--lg" id="password-submit">Save password</button>
+        <p class="judge-err" id="password-msg" hidden></p>
+      </form>
+      <button type="button" class="btn btn--ghost-blue" id="btn-password-back">← Back to your queue</button>
     </div>
   </section>
 
@@ -162,7 +189,8 @@ function OptanonWrapper() { }
 
 </main>
 
+<script src="/judge/session.js?v=1" defer></script>
 <script src="/judge/pdf.js?v=3" defer></script>
-<script src="/judge/script.js?v=8" defer></script>
+<script src="/judge/script.js?v=9" defer></script>
 </body>
 </html>

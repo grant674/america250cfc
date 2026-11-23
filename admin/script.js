@@ -153,7 +153,10 @@
       var complete = j.total > 0 && j.submitted >= j.total;
       return [
         '<div class="judge-progress', complete ? ' is-complete' : '', '">',
-          '<button type="button" class="judge-progress__remove" data-remove-judge="', escHtml(j.judge_id), '" aria-label="Remove ', escHtml(j.name), '">Remove</button>',
+          '<div class="judge-progress__actions">',
+            '<button type="button" class="judge-progress__remove" data-password-judge="', escHtml(j.judge_id), '" aria-label="Set password for ', escHtml(j.name), '">Password</button>',
+            '<button type="button" class="judge-progress__remove" data-remove-judge="', escHtml(j.judge_id), '" aria-label="Remove ', escHtml(j.name), '">Remove</button>',
+          '</div>',
           '<div class="judge-progress__name">', escHtml(j.name), '</div>',
           '<div class="judge-progress__email">', escHtml(j.email || ''), '</div>',
           '<div class="judge-progress__bar"><div class="judge-progress__fill" style="width:', String(pct), '%"></div></div>',
@@ -371,6 +374,91 @@
       e.preventDefault(); e.returnValue = ''; return '';
     });
   })();
+
+  // ----- Set / reset a judge's portal password -----
+  var pwModal = document.getElementById('judge-password-modal');
+  var pwInput = document.getElementById('judge-password-input');
+  var pwMsg = document.getElementById('judge-password-msg');
+  var pwSave = document.getElementById('judge-password-save');
+  var pwTarget = null;
+  function setPwMsg(t, cls) { pwMsg.textContent = t || ''; pwMsg.className = 'invite-msg' + (cls ? ' ' + cls : ''); }
+  // Readable random password: 4 groups of 4, no look-alike characters (0/O, 1/l/I).
+  function generatePassword() {
+    var chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    var buf = new Uint32Array(16);
+    window.crypto.getRandomValues(buf);
+    var out = '';
+    for (var i = 0; i < 16; i++) {
+      if (i && i % 4 === 0) out += '-';
+      out += chars[buf[i] % chars.length];
+    }
+    return out;
+  }
+  function closeJudgePassword() {
+    pwModal.setAttribute('aria-hidden', 'true');
+    pwInput.value = '';      // don't leave the password sitting in the page
+    pwTarget = null;
+  }
+  function openJudgePassword(judgeId) {
+    var j = (state.judgesProgress || []).find(function (x) { return x.judge_id === judgeId; });
+    if (!j) return;
+    pwTarget = j;
+    document.getElementById('judge-password-title').textContent = 'Password for ' + j.name;
+    document.getElementById('judge-password-sub').textContent =
+      'Sets the password ' + j.name + ' uses with ' + (j.email || 'their email') + ' at america250cfc.org/judge/. ' +
+      'It replaces any password they have now. Pass it to them yourself; it is not emailed.';
+    pwInput.value = generatePassword();
+    pwInput.readOnly = false;
+    pwSave.hidden = false; pwSave.disabled = false;
+    document.getElementById('judge-password-generate').hidden = false;
+    setPwMsg('');
+    pwModal.setAttribute('aria-hidden', 'false');
+    pwInput.focus(); pwInput.select();
+  }
+  document.getElementById('judging-grid').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-password-judge]');
+    if (b) openJudgePassword(b.getAttribute('data-password-judge'));
+  });
+  document.querySelectorAll('[data-pw-close]').forEach(function (el) { el.addEventListener('click', closeJudgePassword); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && pwModal.getAttribute('aria-hidden') === 'false') closeJudgePassword();
+  });
+  document.getElementById('judge-password-generate').addEventListener('click', function () {
+    pwInput.value = generatePassword(); setPwMsg(''); pwInput.focus(); pwInput.select();
+  });
+  document.getElementById('judge-password-copy').addEventListener('click', async function () {
+    try { await navigator.clipboard.writeText(pwInput.value); setPwMsg('Copied.', 'is-ok'); }
+    catch (_) { pwInput.focus(); pwInput.select(); setPwMsg('Select the password and copy it.'); }
+  });
+  document.getElementById('judge-password-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    if (!pwTarget) return;
+    var pw = pwInput.value;
+    if (pw.length < 10) { setPwMsg('Use at least 10 characters.', 'is-err'); return; }
+    if (pw.length > 72) { setPwMsg('Use 72 characters or fewer.', 'is-err'); return; }
+    pwSave.disabled = true;
+    setPwMsg('Saving…');
+    try {
+      var res = await fetch('/.netlify/functions/admin-judge-password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ judge_id: pwTarget.judge_id, password: pw }),
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) {
+        throw new Error(data.error === 'password_rejected' ? 'The sign-in service rejected that password as too weak. Try a longer one.'
+          : data.error === 'judge_not_found' ? 'That judge is no longer active.'
+          : 'Could not set the password (' + (data.error || 'HTTP ' + res.status) + ').');
+      }
+      // Keep it on screen so it can be copied and passed on; it cannot be shown again later.
+      pwInput.readOnly = true;
+      pwSave.hidden = true;
+      document.getElementById('judge-password-generate').hidden = true;
+      setPwMsg('Password set. Copy it now and pass it to ' + pwTarget.name + ': it cannot be shown again after you close this.', 'is-ok');
+    } catch (err) {
+      setPwMsg(err.message || 'Could not set the password.', 'is-err');
+      pwSave.disabled = false;
+    }
+  });
 
   // ----- Remove a judge -----
   var removeModal = document.getElementById('remove-judge-modal');
