@@ -339,6 +339,53 @@
   background: var(--fg-45);
 }
 .assign-mark--submitted { background: #15803d; }
+/* Score link beside each assigned tick: opens the admin score editor */
+.assign-score {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  background: var(--c-white);
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  color: var(--fg-65);
+  vertical-align: middle;
+  cursor: pointer;
+}
+button.assign-score:hover { border-color: var(--c-blue); color: var(--c-blue); }
+.assign-score--submitted { background: #15803d; border-color: #15803d; color: var(--c-white); }
+.assign-score--draft     { background: var(--c-blue); border-color: var(--c-blue); color: var(--c-white); }
+.assign-score--recused   { background: var(--c-red); border-color: var(--c-red); color: var(--c-white); }
+button.assign-score--submitted:hover, button.assign-score--draft:hover, button.assign-score--recused:hover { color: var(--c-white); opacity: 0.85; }
+
+/* Admin score editor (modal) */
+.score-modal__panel { max-width: 620px; max-height: calc(100vh - 48px); overflow-y: auto; }
+.score-edit { display: flex; flex-direction: column; gap: 12px; }
+.score-edit__row { display: grid; grid-template-columns: 1fr 84px; gap: 6px 12px; align-items: center; }
+.score-edit__name { font-family: var(--font); font-size: 14px; font-weight: 700; color: var(--c-black); }
+.score-edit__name small { font-weight: 400; color: var(--fg-65); margin-left: 6px; }
+.score-edit__row input[type="number"] {
+  width: 100%; padding: 8px 10px; font-family: var(--font); font-size: 16px; font-weight: 700; text-align: center;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+}
+.score-edit__row textarea {
+  grid-column: 1 / -1; width: 100%; min-height: 40px; padding: 8px 10px; font-family: var(--font); font-size: 13px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm); resize: vertical;
+}
+.score-edit__total {
+  display: flex; justify-content: space-between; align-items: baseline; padding: 10px 12px;
+  background: var(--c-gray); border-radius: var(--radius-sm); font-family: var(--font); font-size: 13px; font-weight: 700;
+}
+.score-edit__total strong { font-size: 22px; color: var(--c-blue); }
+.invite-label select {
+  width: 100%; padding: 10px 12px; font-family: var(--font); font-size: 14px; text-transform: none; letter-spacing: 0;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--c-white); margin-top: 6px;
+}
+.score-edit__note { font-family: var(--font); font-size: 12px; color: var(--fg-65); margin: 0; }
+
 .assign-mark--draft     { background: var(--c-blue); }
 .assign-mark--recused   { background: var(--c-red); }
 #judging-body.is-collapsed { display: none; }

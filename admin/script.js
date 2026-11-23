@@ -240,8 +240,8 @@
     var dirty = d.assign.length + d.unassign.length > 0;
     if (!dirty) assignDraft = null;
 
-    var scoreBy = {};
-    (j.score_status || []).forEach(function (t) { scoreBy[aKey(t[0], t[1])] = t[2]; });
+    var scoreBy = {}, totalBy = {};
+    (j.score_status || []).forEach(function (t) { scoreBy[aKey(t[0], t[1])] = t[2]; totalBy[aKey(t[0], t[1])] = t[3]; });
 
     // Skip the DOM rebuild when nothing changed, so a polling refresh doesn't
     // steal focus or flicker while the admin is working in the grid.
@@ -280,7 +280,14 @@
     });
     head.push('</tr></thead>');
 
-    var MARK = { submitted: ['S', 'Scored'], draft: ['D', 'Scoring in progress'], recused: ['R', 'Recused'] };
+    // Label for the score link beside an assigned tick.
+    function scoreLabel(k) {
+      var st = scoreBy[k];
+      if (st === 'submitted') return totalBy[k] != null ? String(Number(totalBy[k])) : 'final';
+      if (st === 'draft') return 'draft';
+      if (st === 'recused') return 'recused';
+      return 'enter';
+    }
     var body = ['<tbody>'];
     pool.forEach(function (r) {
       var n = judges.filter(function (jd) { return d.draft.has(aKey(jd.id, r.id)); }).length;
@@ -295,11 +302,16 @@
         var k = aKey(jd.id, r.id);
         var on = d.draft.has(k);
         var changed = on !== d.server.has(k);
-        var m = MARK[scoreBy[k]];
+        // The score editor is offered only for assignments that are saved.
+        var saved = d.server.has(k);
         body.push('<td', changed ? ' class="is-changed"' : '', '>',
           '<input type="checkbox" data-akey="', escHtml(k), '"', on ? ' checked' : '', assignSaving ? ' disabled' : '',
           ' aria-label="', escHtml(jd.name), ' scores ', escHtml(r.proj_title || 'this application'), '" />',
-          m ? '<span class="assign-mark assign-mark--' + scoreBy[k] + '" title="' + m[1] + '">' + m[0] + '</span>' : '',
+          saved
+            ? '<button type="button" class="assign-score' + (scoreBy[k] ? ' assign-score--' + scoreBy[k] : '') +
+              '" data-score-judge="' + escHtml(jd.id) + '" data-score-app="' + escHtml(r.id) +
+              '" title="Enter or edit ' + escHtml(jd.name) + '\'s scores for this application">' + escHtml(scoreLabel(k)) + '</button>'
+            : (scoreBy[k] ? '<span class="assign-score assign-score--' + scoreBy[k] + '" title="Score kept; not currently assigned">' + escHtml(scoreLabel(k)) + '</span>' : ''),
           '</td>');
       });
       body.push('</tr>');
@@ -339,6 +351,8 @@
       editAssignments(function (set) { if (on) set.add(k); else set.delete(k); });
     });
     table.addEventListener('click', function (e) {
+      var sb = e.target.closest('button.assign-score');
+      if (sb) { openScoreEditor(sb.getAttribute('data-score-judge'), sb.getAttribute('data-score-app')); return; }
       var btn = e.target.closest('.assign-link');
       if (!btn) return;
       var on = btn.getAttribute('data-aset') === '1';
@@ -356,6 +370,140 @@
       e.preventDefault(); e.returnValue = ''; return '';
     });
   })();
+
+  // ----- Admin score editor: enter / edit scores on a judge's behalf -----
+  // Same five criteria and weights as the judge portal and the database.
+  var SCORE_DIMS = [
+    { key: 'community',      col: 'dim_community',      name: 'Community impact', weight: 25 },
+    { key: 'feasibility',    col: 'dim_feasibility',    name: 'Feasibility',      weight: 20 },
+    { key: 'innovation',     col: 'dim_innovation',     name: 'Innovation',       weight: 20 },
+    { key: 'sustainability', col: 'dim_sustainability', name: 'Sustainability',   weight: 20 },
+    { key: 'founder_team',   col: 'dim_founder_team',   name: 'Founder & team',   weight: 15 },
+  ];
+  var scoreModal = document.getElementById('score-modal');
+  var scoreForm = document.getElementById('score-form');
+  var scoreMsg = document.getElementById('score-edit-msg');
+  var scoreSaveBtn = document.getElementById('score-edit-save');
+  var scoreTarget = null;  // { judgeId, appId }
+  function setScoreMsg(t, cls) { scoreMsg.textContent = t || ''; scoreMsg.className = 'invite-msg' + (cls ? ' ' + cls : ''); }
+
+  function readScoreForm() {
+    var dims = {}, comments = {}, bad = null;
+    SCORE_DIMS.forEach(function (d) {
+      var raw = scoreForm.querySelector('[data-edit-num="' + d.key + '"]').value.trim();
+      if (raw === '') dims[d.col] = null;
+      else if (/^\d{1,2}$/.test(raw) && Number(raw) <= 10) dims[d.col] = Number(raw);
+      else { dims[d.col] = null; bad = bad || d.name; }
+      var c = scoreForm.querySelector('[data-edit-note="' + d.key + '"]').value.trim();
+      if (c) comments[d.key] = c.slice(0, 1000);
+    });
+    return { dims: dims, comments: comments, bad: bad };
+  }
+  function updateScoreEditTotal() {
+    var v = readScoreForm(), sum = 0, n = 0;
+    SCORE_DIMS.forEach(function (d) { if (v.dims[d.col] != null) { sum += v.dims[d.col] * d.weight; n++; } });
+    document.getElementById('score-edit-total').textContent =
+      n === 0 ? '—' : (sum / 10) + ' / 100' + (n < SCORE_DIMS.length ? '  (so far, ' + n + ' of 5)' : '');
+  }
+  function closeScoreEditor() { scoreModal.setAttribute('aria-hidden', 'true'); scoreTarget = null; }
+
+  async function openScoreEditor(judgeId, appId) {
+    var judge = ((state.judging && state.judging.judges) || []).find(function (x) { return x.id === judgeId; });
+    var app = (state.rows || []).find(function (r) { return r.id === appId; });
+    if (!judge || !app) return;
+    scoreTarget = { judgeId: judgeId, appId: appId };
+    document.getElementById('score-modal-title').textContent = 'Scores from ' + judge.name;
+    document.getElementById('score-modal-sub').textContent =
+      (app.proj_title || '(untitled)') + (app.org_name ? ' · ' + app.org_name : '') +
+      '. Use this for a judge who cannot use the judge portal, or to correct or reopen a score.';
+    document.getElementById('score-edit-rows').innerHTML = SCORE_DIMS.map(function (d) {
+      return '<div class="score-edit__row">' +
+        '<label class="score-edit__name" for="edit-num-' + d.key + '">' + escHtml(d.name) + '<small>' + d.weight + '% · 0–10</small></label>' +
+        '<input type="number" id="edit-num-' + d.key + '" data-edit-num="' + d.key + '" min="0" max="10" step="1" inputmode="numeric" />' +
+        '<textarea data-edit-note="' + d.key + '" maxlength="1000" placeholder="Judge\'s comment (optional)" aria-label="' + escHtml(d.name) + ' comment"></textarea>' +
+        '</div>';
+    }).join('');
+    document.getElementById('score-edit-status').value = 'submitted';
+    updateScoreEditTotal();
+    scoreSaveBtn.disabled = true;
+    setScoreMsg('Loading current scores…');
+    scoreModal.setAttribute('aria-hidden', 'false');
+    try {
+      var res = await fetch('/.netlify/functions/admin-score?judge_id=' + encodeURIComponent(judgeId) +
+        '&application_id=' + encodeURIComponent(appId), { credentials: 'include' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var data = await res.json();
+      // Ignore the answer if the editor was closed or reopened for another cell meanwhile.
+      if (!scoreTarget || scoreTarget.judgeId !== judgeId || scoreTarget.appId !== appId) return;
+      var sc = data.score;
+      if (sc) {
+        SCORE_DIMS.forEach(function (d) {
+          scoreForm.querySelector('[data-edit-num="' + d.key + '"]').value = sc[d.col] == null ? '' : sc[d.col];
+          scoreForm.querySelector('[data-edit-note="' + d.key + '"]').value = (sc.comments && sc.comments[d.key]) || '';
+        });
+        document.getElementById('score-edit-status').value = sc.status;
+      }
+      updateScoreEditTotal();
+      setScoreMsg(sc ? 'Current status: ' + ({ submitted: 'final', draft: 'draft', recused: 'recused' }[sc.status] || sc.status) + '.' : 'No scores recorded yet.');
+      scoreSaveBtn.disabled = false;
+      var first = scoreForm.querySelector('input[type="number"]');
+      if (first) first.focus();
+    } catch (err) {
+      setScoreMsg('Could not load the current scores. Close and try again.', 'is-err');
+    }
+  }
+
+  scoreForm.addEventListener('input', function () {
+    updateScoreEditTotal();
+    if (scoreMsg.classList.contains('is-err')) setScoreMsg('');   // clear a stale validation message
+  });
+  document.getElementById('score-edit-status').addEventListener('change', function () {
+    if (scoreMsg.classList.contains('is-err')) setScoreMsg('');
+  });
+  document.querySelectorAll('[data-score-close]').forEach(function (el) { el.addEventListener('click', closeScoreEditor); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && scoreModal.getAttribute('aria-hidden') === 'false') closeScoreEditor();
+  });
+  scoreForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    if (!scoreTarget) return;
+    var v = readScoreForm();
+    var status = document.getElementById('score-edit-status').value;
+    if (v.bad) { setScoreMsg(v.bad + ' must be a whole number from 0 to 10.', 'is-err'); return; }
+    var missing = SCORE_DIMS.filter(function (d) { return v.dims[d.col] == null; }).length;
+    if (status === 'submitted' && missing) { setScoreMsg('Final needs all five scores (' + missing + ' missing). Save as Draft instead, or fill them in.', 'is-err'); return; }
+    if (status === 'recused' && missing < SCORE_DIMS.length &&
+        !window.confirm('Recused records no score. The numbers entered here will be cleared. Continue?')) return;
+    var ERR = {
+      not_assigned: 'This application is not assigned to that judge. Save the assignment first.',
+      unknown_or_inactive_judge: 'That judge is no longer active.',
+      incomplete_scores: 'Final needs all five scores.',
+    };
+    scoreSaveBtn.disabled = true;
+    setScoreMsg('Saving…');
+    try {
+      var res = await fetch('/.netlify/functions/admin-score', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ judge_id: scoreTarget.judgeId, application_id: scoreTarget.appId, dims: v.dims, comments: v.comments, status: status }),
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(ERR[data.error] || ('Save failed (' + (data.error || 'HTTP ' + res.status) + ').'));
+      // Reflect it in the grid straight away, then refresh everything.
+      var list = (state.judging.score_status || []).filter(function (t) {
+        return !(t[0] === scoreTarget.judgeId && t[1] === scoreTarget.appId);
+      });
+      list.push([scoreTarget.judgeId, scoreTarget.appId, data.score.status, data.score.total]);
+      state.judging.score_status = list;
+      renderAssignments(true);
+      setScoreMsg('Saved.', 'is-ok');
+      setTimeout(closeScoreEditor, 700);
+      fetchData();
+    } catch (err) {
+      setScoreMsg(err.message || 'Save failed.', 'is-err');
+    } finally {
+      scoreSaveBtn.disabled = false;
+    }
+  });
 
   async function saveAssignments() {
     var d = assignDiff();
