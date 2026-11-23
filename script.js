@@ -120,7 +120,9 @@
       fetch('/.netlify/functions/notify-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email })
+        // data-source tags which list the address joins (e.g. the next-year
+        // list on /closed/); omitted, the function files it as launch interest.
+        body: JSON.stringify({ email: email, source: form.getAttribute('data-source') || undefined })
       }).catch(function () {
         // Network failure: keep a local copy so nothing is silently lost.
         try {

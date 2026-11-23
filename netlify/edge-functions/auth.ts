@@ -1,9 +1,9 @@
 // ============================================================
-// America250 Community Futures Challenge — Three-tier password gate
+// America250 Community Futures Challenge — Four-tier password gate
 //
 // Tier 1 — Site gate.   Cookie nn_auth.   Password from SITE_PASSWORD env var.
 //                       Protects everything except excluded paths, /admin/*,
-//                       and /tour-preview/*.
+//                       /tour-preview/*, and /demo/*.
 //
 // Tier 2 — Admin gate.  Cookie nn_admin.  Password from ADMIN_PASSWORD env var.
 //                       Protects /admin/* exclusively.
@@ -14,7 +14,12 @@
 //                       handing out admin access, and stays gated even when
 //                       SITE_PUBLIC=true takes Tier 1 off the rest of the site.
 //
-// All three gates use session-only cookies (no Max-Age/Expires) — they die
+// Tier 4 — Demo gate.   Cookie nn_demo.   Password from DEMO_PASSWORD env var.
+//                       Protects /demo/* exclusively (the "applications are
+//                       closed" page, shared for review before it goes live).
+//                       Independent of the other gates, like the tour gate.
+//
+// All four gates use session-only cookies (no Max-Age/Expires) — they die
 // when the browser session ends. Authenticated responses ship with
 // Cache-Control: no-store so neither browser nor CDN holds the auth state.
 // ============================================================
@@ -23,10 +28,11 @@ import type { Config, Context } from "https://edge.netlify.com";
 
 // No hardcoded fallback — the gate fails closed if SITE_PASSWORD is unset.
 // Passwords live only in Netlify env vars (SITE_PASSWORD / ADMIN_PASSWORD /
-// TOUR_PASSWORD); never hardcode or document them in source.
+// TOUR_PASSWORD / DEMO_PASSWORD); never hardcode or document them in source.
 const SITE_COOKIE = "nn_auth";
 const ADMIN_COOKIE = "nn_admin";
 const TOUR_COOKIE = "nn_tour";
+const DEMO_COOKIE = "nn_demo";
 
 // Canonical host. Any request for another host (alias domain) is 301'd here
 // before the gate runs — so nextnow250.org and america250cfc.com/.net all
@@ -161,7 +167,7 @@ const GATE_CSP = [
 ].join("; ");
 
 interface GateOpts {
-  variant: "site" | "admin" | "tour";
+  variant: "site" | "admin" | "tour" | "demo";
   error?: string;
   returnTo: string;
 }
@@ -174,7 +180,7 @@ function gateHtml(opts: GateOpts): string {
       .replace(/"/g, "&quot;");
 
   const isAdmin = opts.variant === "admin";
-  const isTour = opts.variant === "tour";
+  const isTour = opts.variant === "tour" || opts.variant === "demo";
   const title = isAdmin
     ? "America250 CFC — Admin"
     : isTour
@@ -188,7 +194,13 @@ function gateHtml(opts: GateOpts): string {
     : isTour
     ? "Enter the password to view this preview page. The password expires when this browser session ends."
     : "Enter the password to view the preview site. The password expires when this browser session ends.";
-  const action = isAdmin ? "/__admin_auth" : isTour ? "/__tour_auth" : "/__auth";
+  const action = isAdmin
+    ? "/__admin_auth"
+    : opts.variant === "demo"
+    ? "/__demo_auth"
+    : isTour
+    ? "/__tour_auth"
+    : "/__auth";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -356,7 +368,7 @@ async function handleAuthSubmit(
   cookieName: string,
   tokenLabel: string,
   defaultReturn: string,
-  variant: "site" | "admin" | "tour",
+  variant: "site" | "admin" | "tour" | "demo",
   serverSecret: string,
 ): Promise<Response> {
   const ct = request.headers.get("content-type") || "";
@@ -430,6 +442,7 @@ export default async (
   const sitePassword = Deno.env.get("SITE_PASSWORD") ?? "";
   const adminPassword = Deno.env.get("ADMIN_PASSWORD") ?? "";
   const tourPassword = Deno.env.get("TOUR_PASSWORD") ?? "";
+  const demoPassword = Deno.env.get("DEMO_PASSWORD") ?? "";
   const serverSecret = Deno.env.get("NN_AUTH_SECRET") ?? "";
 
   // SITE_PUBLIC=true disables ONLY the Tier-1 site gate so the site serves
@@ -461,6 +474,9 @@ export default async (
   const expectedTourToken = (tourPassword && serverSecret)
     ? await sessionToken(serverSecret, "nn-tour-v1", tourPassword)
     : "";
+  const expectedDemoToken = (demoPassword && serverSecret)
+    ? await sessionToken(serverSecret, "nn-demo-v1", demoPassword)
+    : "";
 
   // -------- Site auth submit --------
   if (url.pathname === "/__auth" && request.method === "POST") {
@@ -481,6 +497,14 @@ export default async (
       return new Response("Tour preview password not configured", { status: 503 });
     }
     return handleAuthSubmit(request, tourPassword, TOUR_COOKIE, "nn-tour-v1", "/tour-preview/", "tour", serverSecret);
+  }
+
+  // -------- Demo auth submit --------
+  if (url.pathname === "/__demo_auth" && request.method === "POST") {
+    if (!demoPassword || !serverSecret) {
+      return new Response("Demo password not configured", { status: 503 });
+    }
+    return handleAuthSubmit(request, demoPassword, DEMO_COOKIE, "nn-demo-v1", "/demo/", "demo", serverSecret);
   }
 
   const cookieHeader = request.headers.get("cookie") ?? "";
@@ -513,6 +537,23 @@ export default async (
     const candidates = getCookieValues(cookieHeader, TOUR_COOKIE);
     if (!anyTimingSafeEqual(candidates, expectedTourToken)) {
       return gateResponse({ variant: "tour", returnTo: url.pathname + url.search });
+    }
+    const response = await context.next();
+    const out = new Response(response.body, response);
+    noStore(out.headers);
+    return out;
+  }
+
+  // -------- /demo/* — demo gate only --------
+  // Same shape as the tour gate: stays locked when SITE_PUBLIC=true, and fails
+  // closed (503) if DEMO_PASSWORD or the signing secret is missing.
+  if (url.pathname.startsWith("/demo/") || url.pathname === "/demo") {
+    if (!demoPassword || !serverSecret) {
+      return new Response("Demo password not configured", { status: 503 });
+    }
+    const candidates = getCookieValues(cookieHeader, DEMO_COOKIE);
+    if (!anyTimingSafeEqual(candidates, expectedDemoToken)) {
+      return gateResponse({ variant: "demo", returnTo: url.pathname + url.search });
     }
     const response = await context.next();
     const out = new Response(response.body, response);
