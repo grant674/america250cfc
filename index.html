@@ -309,7 +309,7 @@ function OptanonWrapper() { }
 
 <!-- ============== WASHINGTON POST VIDEOS ==============
      One .video-card per video. To fill a placeholder: set both hrefs to the
-     video's washingtonpost.com URL, put a still in the thumb <img> (or leave
+     video's URL (card 1 shows the pattern), put a still in the thumb <img> (or leave
      the blue panel), replace the title/meta/description text, and remove the
      video-card--pending class. Pending cards keep their button disabled. -->
 <section id="wapo-videos" class="section section--gray">
@@ -321,14 +321,14 @@ function OptanonWrapper() { }
     </div>
 
     <div class="video-grid reveal-stagger">
-      <article class="video-card video-card--pending">
-        <div class="video-card__thumb" aria-hidden="true"><span class="video-card__play"></span></div>
+      <article class="video-card">
+        <a class="video-card__thumb" href="https://vimeo.com/1249501810" target="_blank" rel="noopener" aria-hidden="true" tabindex="-1"><span class="video-card__play"></span></a>
         <div class="video-card__body">
           <span class="eyebrow eyebrow--accent">The Washington Post</span>
           <h3 class="video-card__title">Video 1 — title to come</h3>
-          <p class="video-card__meta">Link needed</p>
-          <p class="video-card__desc">Placeholder until the video link and details are added.</p>
-          <a class="btn btn--blue btn--sm" href="#" aria-disabled="true" tabindex="-1">Watch on The Washington Post <span aria-hidden="true">↗</span></a>
+          <p class="video-card__meta">Title and description needed</p>
+          <p class="video-card__desc">Placeholder until the video's title and description are added.</p>
+          <a class="btn btn--blue btn--sm" href="https://vimeo.com/1249501810" target="_blank" rel="noopener">Watch the video <span aria-hidden="true">↗</span></a>
         </div>
       </article>
       <article class="video-card video-card--pending">
