@@ -28,7 +28,7 @@ function OptanonWrapper() { }
 <meta name="twitter:image" content="https://america250cfc.org/assets/og-image.jpg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="/styles.css?v=23" />
+<link rel="stylesheet" href="/styles.css?v=24" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="canonical" href="https://america250cfc.org/" />
 <link rel="preload" as="image" href="/assets/hero-cfc.jpg" />
@@ -308,8 +308,11 @@ function OptanonWrapper() { }
 </section>
 
 <!-- ============== WASHINGTON POST VIDEOS ==============
-     One .video-card per video. To add another, copy a card and change both
-     hrefs, the thumbnail under /assets/videos/ (16:9), title and description. -->
+     One .video-card per video. To add another, copy a card and change the
+     Vimeo ID (both hrefs and both data-video values), the thumbnail under
+     /assets/videos/ (16:9), title and description. Clicking a card plays the
+     video in the #video-modal overlay (script.js); the href is the fallback
+     when scripts are off. Vimeo's player is only requested after that click. -->
 <section id="wapo-videos" class="section section--gray">
   <div class="container container--narrow">
     <div class="section__head reveal">
@@ -320,21 +323,21 @@ function OptanonWrapper() { }
 
     <div class="video-grid reveal-stagger">
       <article class="video-card">
-        <a class="video-card__thumb" href="https://vimeo.com/1249501810" target="_blank" rel="noopener" aria-hidden="true" tabindex="-1"><img src="/assets/videos/kent-yoshimura.jpg" alt="" width="1080" height="608" loading="lazy" /><span class="video-card__play"></span></a>
+        <a class="video-card__thumb" href="https://vimeo.com/1249501810" target="_blank" rel="noopener" data-video="1249501810" aria-hidden="true" tabindex="-1"><img src="/assets/videos/kent-yoshimura.jpg" alt="" width="1080" height="608" loading="lazy" /><span class="video-card__play"></span></a>
         <div class="video-card__body">
           <span class="eyebrow eyebrow--accent">The Washington Post</span>
           <h3 class="video-card__title">Importance of Community-Led Innovation with Kent Yoshimura</h3>
           <p class="video-card__desc">Discover the Community Futures Challenge, an initiative seeking passionate individuals with innovative solutions to community problems. Kent Yoshimura, Co-Founder &amp; CEO of Neuro and a challenge judge, discusses the importance of community-led innovation. Apply for funding by November 30th.</p>
-          <a class="btn btn--blue btn--sm" href="https://vimeo.com/1249501810" target="_blank" rel="noopener">Watch the video <span aria-hidden="true">↗</span></a>
+          <a class="btn btn--blue btn--sm" href="https://vimeo.com/1249501810" target="_blank" rel="noopener" data-video="1249501810">Play video <span aria-hidden="true">▶</span></a>
         </div>
       </article>
       <article class="video-card">
-        <a class="video-card__thumb" href="https://vimeo.com/1249501809" target="_blank" rel="noopener" aria-hidden="true" tabindex="-1"><img src="/assets/videos/hugh-forrest.jpg" alt="" width="1080" height="608" loading="lazy" /><span class="video-card__play"></span></a>
+        <a class="video-card__thumb" href="https://vimeo.com/1249501809" target="_blank" rel="noopener" data-video="1249501809" aria-hidden="true" tabindex="-1"><img src="/assets/videos/hugh-forrest.jpg" alt="" width="1080" height="608" loading="lazy" /><span class="video-card__play"></span></a>
         <div class="video-card__body">
           <span class="eyebrow eyebrow--accent">The Washington Post</span>
           <h3 class="video-card__title">A Call to Innovators with Hugh Forrest</h3>
           <p class="video-card__desc">Challenge judge Hugh Forrest, Founder of Gather &amp; Grow Experiences, on how the challenge drives innovation, fosters partnerships, and creates new opportunities.</p>
-          <a class="btn btn--blue btn--sm" href="https://vimeo.com/1249501809" target="_blank" rel="noopener">Watch the video <span aria-hidden="true">↗</span></a>
+          <a class="btn btn--blue btn--sm" href="https://vimeo.com/1249501809" target="_blank" rel="noopener" data-video="1249501809">Play video <span aria-hidden="true">▶</span></a>
         </div>
       </article>
     </div>
@@ -511,6 +514,16 @@ function OptanonWrapper() { }
   </div>
 </div>
 
-<script src="/script.js?v=10" defer></script>
+<!-- ============== VIDEO MODAL ============== -->
+<div class="modal video-modal" id="video-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Video player">
+  <div class="modal__scrim" data-close-video></div>
+  <div class="video-modal__panel">
+    <button class="video-modal__close" type="button" aria-label="Close video" data-close-video>×</button>
+    <div class="video-modal__frame" id="video-modal-frame"></div>
+    <a class="video-modal__fallback" id="video-modal-link" href="#" target="_blank" rel="noopener">Trouble playing? Watch on Vimeo <span aria-hidden="true">↗</span></a>
+  </div>
+</div>
+
+<script src="/script.js?v=11" defer></script>
 </body>
 </html>
