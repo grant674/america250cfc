@@ -81,6 +81,57 @@
     if (e.key === 'Escape' && modal && modal.getAttribute('aria-hidden') === 'false') closeModal();
   });
 
+  // Video modal: a card's thumbnail or button opens its Vimeo video in an
+  // overlay. The player iframe is created on click and removed on close, so
+  // nothing is requested from Vimeo until a visitor chooses to watch.
+  var vModal = document.getElementById('video-modal');
+  var vFrame = document.getElementById('video-modal-frame');
+  var vLink = document.getElementById('video-modal-link');
+  var vLastFocus = null;
+  function openVideo(id, title) {
+    if (!vModal || !vFrame || !/^\d+$/.test(id)) return false;
+    vLastFocus = document.activeElement;
+    var iframe = document.createElement('iframe');
+    iframe.src = 'https://player.vimeo.com/video/' + id + '?dnt=1&autoplay=1&title=0&byline=0&portrait=0';
+    iframe.title = title || 'Video player';
+    iframe.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
+    iframe.setAttribute('allowfullscreen', '');
+    vFrame.appendChild(iframe);
+    if (vLink) vLink.href = 'https://vimeo.com/' + id;
+    vModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    var closeBtn = vModal.querySelector('.video-modal__close');
+    if (closeBtn) closeBtn.focus();
+    return true;
+  }
+  function closeVideo() {
+    if (!vModal || vModal.getAttribute('aria-hidden') !== 'false') return;
+    vModal.setAttribute('aria-hidden', 'true');
+    vFrame.textContent = '';
+    document.body.style.overflow = '';
+    if (vLastFocus && typeof vLastFocus.focus === 'function') vLastFocus.focus();
+  }
+  document.querySelectorAll('[data-video]').forEach(function (el) {
+    el.addEventListener('click', function (e) {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+      var card = el.closest('.video-card');
+      var heading = card && card.querySelector('.video-card__title');
+      if (openVideo(el.getAttribute('data-video'), heading && heading.textContent)) e.preventDefault();
+    });
+  });
+  document.querySelectorAll('[data-close-video]').forEach(function (el) {
+    el.addEventListener('click', closeVideo);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (!vModal || vModal.getAttribute('aria-hidden') !== 'false') return;
+    if (e.key === 'Escape') closeVideo();
+    // Keep keyboard focus inside the overlay while it is open.
+    if (e.key === 'Tab' && !vModal.contains(document.activeElement)) {
+      e.preventDefault();
+      vModal.querySelector('.video-modal__close').focus();
+    }
+  });
+
   // Reveal-on-scroll: fade up section heads, stagger child grids
   if ('IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     var io = new IntersectionObserver(function (entries) {

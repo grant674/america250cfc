@@ -808,9 +808,8 @@ details.tour-row > summary.tour-row__summary { cursor: pointer; }
 }
 .carousel__dot.is-active { background: var(--c-yellow); }
 
-/* Washington Post video cards — homepage. Each card links out
-   to the video on washingtonpost.com (no third-party player is loaded
-   here, so the site's CSP and privacy commitments are unchanged). */
+/* Washington Post video cards — homepage. Clicking a card plays its Vimeo
+   video in the .video-modal overlay; the player loads only on that click. */
 .video-lead {
   font-size: 16px;
   line-height: 1.65;
@@ -1193,6 +1192,41 @@ details.tour-row > summary.tour-row__summary { cursor: pointer; }
   justify-content: center;
 }
 .modal__close:hover { background: var(--c-gray); }
+/* Video modal — plays a card's vertical (9:16) Vimeo video in an overlay. */
+.video-modal .modal__scrim { background: rgba(0, 0, 0, 0.82); }
+.video-modal__panel {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  /* Width follows the height budget so the whole player fits on screen. */
+  width: min(calc(100% - 32px), calc((100dvh - 132px) * 9 / 16));
+}
+.video-modal__frame {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  background: var(--c-black);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.video-modal__frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+.video-modal__close {
+  align-self: flex-end;
+  width: 40px; height: 40px;
+  border-radius: var(--radius-pill);
+  font-size: 26px; line-height: 1;
+  color: var(--c-white);
+  background: rgba(255, 255, 255, 0.14);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.video-modal__close:hover { background: rgba(255, 255, 255, 0.28); }
+.video-modal__fallback { font-size: 13px; color: var(--c-white); text-decoration: underline; }
+
 .modal__title {
   font-family: var(--font);
   font-weight: 700;

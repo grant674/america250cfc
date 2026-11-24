@@ -25,7 +25,7 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    Content-Security-Policy = "default-src 'self'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' https://challenges.cloudflare.com https://cdn.cookielaw.org; connect-src 'self' https://emhcsinxtxshdgiceofa.supabase.co wss://emhcsinxtxshdgiceofa.supabase.co https://challenges.cloudflare.com https://cdn.cookielaw.org https://geolocation.onetrust.com; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' https://challenges.cloudflare.com https://cdn.cookielaw.org; connect-src 'self' https://emhcsinxtxshdgiceofa.supabase.co wss://emhcsinxtxshdgiceofa.supabase.co https://challenges.cloudflare.com https://cdn.cookielaw.org https://geolocation.onetrust.com; frame-src https://challenges.cloudflare.com https://player.vimeo.com; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
     # NOTE: the netlify.toml-level HSTS is 1 year (confirmed from deploy-permalink
     # headers). The custom domain america250cfc.org shows a longer max-age from a
     # separate Netlify domain-level HSTS setting that overrides this on the apex.
@@ -33,7 +33,7 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "accelerometer=(), ambient-light-sensor=(), autoplay=(), battery=(), camera=(), display-capture=(), document-domain=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), idle-detection=(), magnetometer=(), microphone=(), midi=(), navigation-override=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), speaker-selection=(), sync-xhr=(), usb=(), web-share=(self), xr-spatial-tracking=(), interest-cohort=(), browsing-topics=()"
+    Permissions-Policy = "accelerometer=(), ambient-light-sensor=(), autoplay=(self \"https://player.vimeo.com\"), battery=(), camera=(), display-capture=(), document-domain=(), encrypted-media=(), fullscreen=(self \"https://player.vimeo.com\"), geolocation=(), gyroscope=(), idle-detection=(), magnetometer=(), microphone=(), midi=(), navigation-override=(), payment=(), picture-in-picture=(self \"https://player.vimeo.com\"), publickey-credentials-get=(), screen-wake-lock=(), serial=(), speaker-selection=(), sync-xhr=(), usb=(), web-share=(self), xr-spatial-tracking=(), interest-cohort=(), browsing-topics=()"
     X-DNS-Prefetch-Control = "off"
     X-Permitted-Cross-Domain-Policies = "none"
     Cross-Origin-Opener-Policy = "same-origin"
