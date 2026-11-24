@@ -808,7 +808,7 @@ details.tour-row > summary.tour-row__summary { cursor: pointer; }
 }
 .carousel__dot.is-active { background: var(--c-yellow); }
 
-/* Washington Post video cards — tour-preview page. Each card links out
+/* Washington Post video cards — homepage. Each card links out
    to the video on washingtonpost.com (no third-party player is loaded
    here, so the site's CSP and privacy commitments are unchanged). */
 .video-lead {
@@ -820,7 +820,7 @@ details.tour-row > summary.tour-row__summary { cursor: pointer; }
 }
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 24px;
   margin-top: 40px;
 }
