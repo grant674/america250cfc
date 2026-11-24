@@ -808,7 +808,7 @@ details.tour-row > summary.tour-row__summary { cursor: pointer; }
 }
 .carousel__dot.is-active { background: var(--c-yellow); }
 
-/* Washington Post video cards — tour-preview page. Each card links out
+/* Washington Post video cards — homepage. Each card links out
    to the video on washingtonpost.com (no third-party player is loaded
    here, so the site's CSP and privacy commitments are unchanged). */
 .video-lead {
