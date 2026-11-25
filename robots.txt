@@ -9,5 +9,6 @@ Disallow: /netlify/
 Disallow: /resources/
 Disallow: /tour-preview/
 Disallow: /demo/
+Disallow: /demo2/
 
 Sitemap: https://america250cfc.org/sitemap.xml

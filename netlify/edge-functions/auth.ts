@@ -15,7 +15,7 @@
 //                       SITE_PUBLIC=true takes Tier 1 off the rest of the site.
 //
 // Tier 4 — Demo gate.   Cookie nn_demo.   Password from DEMO_PASSWORD env var.
-//                       Protects /demo/* exclusively (the "applications are
+//                       Protects /demo/* and /demo2/* exclusively (the "applications are
 //                       closed" page, shared for review before it goes live).
 //                       Independent of the other gates, like the tour gate.
 //
@@ -544,10 +544,13 @@ export default async (
     return out;
   }
 
-  // -------- /demo/* — demo gate only --------
+  // -------- /demo/* and /demo2/* — demo gate only (one passcode, one cookie) --------
   // Same shape as the tour gate: stays locked when SITE_PUBLIC=true, and fails
   // closed (503) if DEMO_PASSWORD or the signing secret is missing.
-  if (url.pathname.startsWith("/demo/") || url.pathname === "/demo") {
+  if (
+    url.pathname.startsWith("/demo/") || url.pathname === "/demo" ||
+    url.pathname.startsWith("/demo2/") || url.pathname === "/demo2"
+  ) {
     if (!demoPassword || !serverSecret) {
       return new Response("Demo password not configured", { status: 503 });
     }

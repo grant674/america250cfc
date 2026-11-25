@@ -25,6 +25,7 @@ an edge auth gate, backed by Supabase, Resend, and Anthropic.
   for review, behind its own passcode (`DEMO_PASSWORD`, edge function). Signups go
   through `notify-signup`, stored with `source = next_cycle_2027`. Launch steps are
   in the "Applications closed" note in `netlify.toml`.
+  `/demo2/` is a second version without the next-year signup, behind the same passcode.
 - Judges sign in via magic link (`/judge/`), score blind (applicant identity is
   withheld at the DB level), data gated by Supabase RLS. A judge sees only the
   applications assigned to them.
